@@ -28,13 +28,13 @@ class FutureAPI(Client):
         return self._request_without_params(GET, FUTURE_GET_LEVERAGE + str(symbol) + '/leverage')
 
     # set leverage
-    def set_leverage(self, symbol, instrument_id='', direction='', leverage=10):
-        #params = {'margin_mode': margin_mode, 'instrument_id': instrument_id, 'direction': direction, 'ratio': ratio}
-        params = {'instrument_id': instrument_id, 'direction': direction, 'leverage': leverage}
-        if symbol:
-            return self._request_with_params(POST, FUTURE_SET_LEVERAGE + str(symbol) + '/leverage', params)
-        else:
-            return self._request_with_params(POST, FUTURE_SET_LEVERAGE + 'leverage', params)
+    def set_leverage(self, currency, leverage, instrument_id='', direction=''):
+        params = {'leverage': leverage}
+        if instrument_id:
+            params['instrument_id'] = instrument_id
+        if direction:
+            params['direction'] = direction
+        return self._request_with_params(POST, FUTURE_SET_LEVERAGE + str(currency) + '/leverage', params)
 
     # query ledger
     def get_ledger(self, symbol):
