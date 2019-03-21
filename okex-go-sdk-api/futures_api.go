@@ -1,6 +1,7 @@
 package okex
 
 import (
+	"log"
 	"net/http"
 	"strings"
 )
@@ -334,6 +335,7 @@ func parsePositions(response *http.Response, err error) (FuturesPosition, error)
 	var result Result
 	result.Result = false
 	jsonString := GetResponseDataJsonString(response)
+	log.Printf("received - %s", jsonString)
 	if strings.Contains(jsonString, "\"margin_mode\":\"fixed\"") {
 		var fixedPosition FuturesFixedPosition
 		err = JsonString2Struct(jsonString, &fixedPosition)
@@ -341,7 +343,7 @@ func parsePositions(response *http.Response, err error) (FuturesPosition, error)
 			return position, err
 		} else {
 			position.Result = fixedPosition.Result
-			position.MarginMode = fixedPosition.MarginMode
+			position.MarginMode = "fixed"
 			position.FixedPosition = fixedPosition.FixedPosition
 		}
 	} else if strings.Contains(jsonString, "\"margin_mode\":\"crossed\"") {
@@ -351,8 +353,14 @@ func parsePositions(response *http.Response, err error) (FuturesPosition, error)
 			return position, err
 		} else {
 			position.Result = crossPosition.Result
-			position.MarginMode = crossPosition.MarginMode
-			position.CrossPosition = crossPosition.CrossPosition
+			position.MarginMode = "crossed"
+			for i := range crossPosition.CrossPosition {
+				lv0 := crossPosition.CrossPosition[i]
+				for j := range lv0 {
+					lv1 := &lv0[j]
+					position.CrossPosition = append(position.CrossPosition, *lv1)
+				}
+			}
 		}
 	} else if strings.Contains(jsonString, "\"code\":") {
 		JsonString2Struct(jsonString, &position)

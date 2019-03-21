@@ -44,8 +44,8 @@ type FuturesPosition struct {
 
 type FuturesCrossPosition struct {
 	Result
-	MarginMode    string                        `json:"margin_mode"`
-	CrossPosition []FuturesCrossPositionHolding `json:"holding"`
+	MarginMode    string                          `json:"margin_mode"`
+	CrossPosition [][]FuturesCrossPositionHolding `json:"holding"`
 }
 
 type FuturesFixedPosition struct {

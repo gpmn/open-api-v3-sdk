@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/crc32"
+	"log"
 	"strconv"
 	"strings"
 )
@@ -86,12 +87,12 @@ func (st *SubscriptionTopic) ToString() (topic string, err error) {
 
 type WSEventResponse struct {
 	Event   string `json:"event"`
-	Success string `json:success`
+	Success bool   `json:success`
 	Channel string `json:"channel"`
 }
 
 func (r *WSEventResponse) Valid() bool {
-	return len(r.Event) > 0 && len(r.Channel) > 0
+	return r.Event == "login" || (len(r.Event) > 0 && len(r.Channel) > 0)
 }
 
 type WSTableResponse struct {
@@ -295,43 +296,45 @@ type WSErrorResponse struct {
 }
 
 func (r *WSErrorResponse) Valid() bool {
-	return len(r.Event) > 0 && len(r.Message) > 0 && r.ErrorCode >= 30000
+	return (len(r.Event) > 0 && len(r.Message) > 0 && r.ErrorCode >= 30000)
 }
 
 func loadResponse(rspMsg []byte) (interface{}, error) {
-
-	//log.Printf("%s", rspMsg)
-
-	evtR := WSEventResponse{}
-	err := JsonBytes2Struct(rspMsg, &evtR)
-	if err == nil && evtR.Valid() {
-		return &evtR, nil
-	}
-
-	dtr := WSDepthTableResponse{}
-	err = JsonBytes2Struct(rspMsg, &dtr)
-	if err == nil && dtr.Valid() {
-		return &dtr, nil
-	}
-
-	tr := WSTableResponse{}
-	err = JsonBytes2Struct(rspMsg, &tr)
-	if err == nil && tr.Valid() {
-		return &tr, nil
-	}
-
-	er := WSErrorResponse{}
-	err = JsonBytes2Struct(rspMsg, &er)
-	if err == nil && er.Valid() {
-		return &er, nil
-	}
-
 	if string(rspMsg) == "pong" {
 		return string(rspMsg), nil
 	}
 
-	return nil, err
+	if strings.Contains(string(rspMsg), `"event":"error"`) {
+		er := WSErrorResponse{}
+		err := JsonBytes2Struct(rspMsg, &er)
+		if err == nil && er.Valid() {
+			return &er, nil
+		}
+	}
 
+	if strings.Contains(string(rspMsg), `"event"`) {
+		evtR := WSEventResponse{}
+		err := JsonBytes2Struct(rspMsg, &evtR)
+		if err == nil && evtR.Valid() {
+			return &evtR, nil
+		}
+	}
+
+	if strings.Contains(string(rspMsg), "depth") {
+		dtr := WSDepthTableResponse{}
+		err := JsonBytes2Struct(rspMsg, &dtr)
+		if err == nil && dtr.Valid() {
+			return &dtr, nil
+		}
+	}
+
+	tr := WSTableResponse{}
+	err := JsonBytes2Struct(rspMsg, &tr)
+	if err == nil && tr.Valid() {
+		return &tr, nil
+	}
+
+	return nil, err
 }
 
 type ReceivedDataCallback func(interface{}) error
@@ -339,14 +342,14 @@ type ReceivedDataCallback func(interface{}) error
 func defaultPrintData(obj interface{}) error {
 	switch obj.(type) {
 	case string:
-		fmt.Println(obj)
+		log.Printf("%v", obj)
 	default:
 		msg, err := Struct2JsonString(obj)
 		if err != nil {
-			fmt.Println(err.Error())
+			log.Println(err.Error())
 			return err
 		}
-		fmt.Println(msg)
+		log.Println(msg)
 
 	}
 	return nil

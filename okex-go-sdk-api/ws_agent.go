@@ -10,8 +10,9 @@ package okex
 import (
 	"bytes"
 	"compress/flate"
-	"github.com/gorilla/websocket"
 	"io/ioutil"
+
+	"github.com/gorilla/websocket"
 
 	"log"
 	"os"
@@ -135,7 +136,6 @@ func (a *OKWSAgent) Login(apiKey, passphrase string) error {
 	} else {
 		op, err := loginOp(apiKey, passphrase, timestamp, sign)
 		data, err := Struct2JsonString(op)
-		log.Printf("Send Msg: %s", data)
 		err = a.conn.WriteMessage(websocket.TextMessage, []byte(data))
 		if err != nil {
 			return err
@@ -280,12 +280,11 @@ func (a *OKWSAgent) receive() {
 			txtMsg, err = a.GzipDecode(message)
 		}
 
-		rsp, err := loadResponse(txtMsg)
-		if rsp != nil {
-			log.Printf("LoadedRep: %+v, err: %+v", rsp, err)
-		} else {
-			log.Printf("TextMessg: %s", txtMsg)
+		if string(txtMsg) == "pong" {
+			continue
 		}
+
+		rsp, err := loadResponse(txtMsg)
 
 		if err != nil {
 			break
@@ -314,7 +313,7 @@ func (a *OKWSAgent) receive() {
 			tb := rsp.(*WSTableResponse)
 			a.wsTbCh <- tb
 		default:
-			//log.Println(rsp)
+			log.Printf("LoadedRep: Warning - unknown response : %+v", string(txtMsg))
 		}
 	}
 }
