@@ -35,7 +35,7 @@ type OKWSAgent struct {
 	errCh    chan error
 	signalCh chan os.Signal
 
-	subMap         map[string][]ReceivedDataCallback
+	subMap         map[string]ReceivedDataCallback
 	activeChannels map[string]bool
 	hotDepthsMap   map[string]*WSHotDepths
 
@@ -62,7 +62,7 @@ func (a *OKWSAgent) Start(config *Config) error {
 		a.stopCh = make(chan interface{}, 16)
 		a.signalCh = make(chan os.Signal)
 		a.activeChannels = make(map[string]bool)
-		a.subMap = make(map[string][]ReceivedDataCallback)
+		a.subMap = make(map[string]ReceivedDataCallback)
 		a.hotDepthsMap = make(map[string]*WSHotDepths)
 
 		signal.Notify(a.signalCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
@@ -91,15 +91,15 @@ func (a *OKWSAgent) Subscribe(channel, filter string, cb ReceivedDataCallback) e
 		return err
 	}
 
-	cbs := a.subMap[st.channel]
-	if cbs == nil {
-		cbs = []ReceivedDataCallback{}
-		a.activeChannels[st.channel] = false
-	}
-	cbs = append(cbs, cb)
-	a.subMap[st.channel] = cbs
-	fullTopic, err := st.ToString()
-	a.subMap[fullTopic] = cbs
+	//cbs := a.subMap[st.channel]
+	// if cbs == nil {
+	// 	cbs = []ReceivedDataCallback{}
+	a.activeChannels[st.channel] = false
+	// }
+	//cbs = append(cbs, cb)
+	a.subMap[st.channel] = cb
+	// fullTopic, err := st.ToString()
+	// a.subMap[fullTopic] = cbs
 
 	return nil
 }
@@ -211,14 +211,14 @@ func (a *OKWSAgent) handleTableResponse(r interface{}) error {
 		tb = r.(*WSDepthTableResponse).Table
 	}
 
-	cbs := a.subMap[tb]
-	if cbs != nil {
-		for i := 0; i < len(cbs); i++ {
-			cb := cbs[i]
-			if err := cb(r); err != nil {
-				return err
-			}
+	cb := a.subMap[tb]
+	if cb != nil {
+		// for i := 0; i < len(cbs); i++ {
+		// cb := cbs[i]
+		if err := cb(r); err != nil {
+			return err
 		}
+		// }
 	}
 	return nil
 }

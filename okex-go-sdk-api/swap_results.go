@@ -96,6 +96,7 @@ type BaseOrderInfo struct {
 	FilledQty    string `json:"filled_qty"`
 	ContractVal  string `json:"contract_val"`
 	Type         string `json:"type"`
+	ClientOid    string `json:"client_oid"`
 }
 
 type SwapOrdersInfo struct {

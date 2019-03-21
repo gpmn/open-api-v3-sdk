@@ -235,6 +235,7 @@ type FuturesGetOrderResult struct {
 	Type         int     `json:"type,string"`
 	ContractVal  float64 `json:"contract_val,string"`
 	Leverage     float64 `json:"leverage,string"`
+	ClientOid    string  `json:"client_oid"`
 }
 
 type FuturesFillResult struct {

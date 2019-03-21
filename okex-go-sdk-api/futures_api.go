@@ -251,13 +251,12 @@ func (client *Client) FuturesOrders(batchNewOrder FuturesBatchNewOrderParams) (F
 /*
  Get all of futures contract order list
 */
-func (client *Client) GetFuturesOrders(InstrumentId string, status, from, to, limit int) (FuturesGetOrdersResult, error) {
+func (client *Client) GetFuturesOrders(InstrumentId string, params map[string]string) (FuturesGetOrdersResult, error) {
 	var ordersResult FuturesGetOrdersResult
-	params := NewParams()
-	params["status"] = Int2String(status)
-	params["from"] = Int2String(from)
-	params["to"] = Int2String(to)
-	params["limit"] = Int2String(limit)
+	// params["status"] = Int2String(status)
+	// params["from"] = Int2String(from)
+	// params["to"] = Int2String(to)
+	// params["limit"] = Int2String(limit)
 	requestPath := BuildParams(GetInstrumentIdUri(FUTURES_INSTRUMENT_ORDER_LIST, InstrumentId), params)
 	_, err := client.Request(GET, requestPath, nil, &ordersResult)
 	return ordersResult, err
@@ -335,7 +334,7 @@ func parsePositions(response *http.Response, err error) (FuturesPosition, error)
 	var result Result
 	result.Result = false
 	jsonString := GetResponseDataJsonString(response)
-	log.Printf("received - %s", jsonString)
+	log.Printf("parsePositions - %s", jsonString)
 	if strings.Contains(jsonString, "\"margin_mode\":\"fixed\"") {
 		var fixedPosition FuturesFixedPosition
 		err = JsonString2Struct(jsonString, &fixedPosition)
@@ -380,6 +379,7 @@ func parseAccounts(response *http.Response, err error) (FuturesAccount, error) {
 	var result Result
 	result.Result = false
 	jsonString := GetResponseDataJsonString(response)
+	log.Printf("parseAccounts - %s", jsonString)
 	if strings.Contains(jsonString, "\"contracts\"") {
 		var fixedAccount FuturesFixedAccountInfo
 		err = JsonString2Struct(jsonString, &fixedAccount)
