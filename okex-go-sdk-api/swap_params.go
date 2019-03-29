@@ -9,6 +9,7 @@ package okex
 
 type BasePlaceOrderInfo struct {
 	ClientOid  string `json:"client_oid"`
+	OrderType  string `json:"order_type"`
 	Price      string `json:"price"`
 	MatchPrice string `json:"match_price"`
 	Type       string `json:"type"`

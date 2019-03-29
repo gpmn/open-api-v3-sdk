@@ -34,6 +34,7 @@ type FuturesBatchNewOrderParams struct {
 
 type FuturesBatchNewOrderItem struct {
 	ClientOid  string `json:"client_oid"`
+	OrderType  string `json:"order_type"`
 	Type       string `json:"type"`
 	Price      string `json:"price"`
 	Size       string `json:"size"`
