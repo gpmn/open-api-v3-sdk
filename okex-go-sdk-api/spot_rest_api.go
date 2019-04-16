@@ -13,13 +13,21 @@ HTTP请求
 GET /api/spot/v3/accounts
 
 */
-func (client *Client) GetSpotAccounts() (*[]map[string]interface{}, error) {
-	r := []map[string]interface{}{}
+/*available:0.96245415 holds:0 frozen:0 hold:0 id:6193104 currency:USDT balance:0.96245415*/
+type SpotAccount struct {
+	Currency  string  `json:"currency"`
+	AccountID string  `json:"id"`
+	Balance   float64 `json:"balance,string"`
+	Available float64 `json:"avaliable,string"`
+	Hold      float64 `json:"hold,string"`
+}
 
-	if _, err := client.Request(GET, SPOT_ACCOUNTS, nil, &r); err != nil {
+// GetSpotAccounts :
+func (client *Client) GetSpotAccounts() (accounts []SpotAccount, err error) {
+	if _, err = client.Request(GET, SPOT_ACCOUNTS, nil, &accounts); err != nil {
 		return nil, err
 	}
-	return &r, nil
+	return
 }
 
 /*
@@ -99,9 +107,27 @@ func (client *Client) GetSpotOrders(status, instrument_id string, options *map[s
 HTTP请求
 GET /api/spot/v3/orders_pending
 */
-func (client *Client) GetSpotOrdersPending(options *map[string]string) (*[]map[string]interface{}, error) {
-	r := []map[string]interface{}{}
+// created_at:2019-04-16T06:14:27.000Z price:0.107 type:limit client_oid: order_id:2664645705550848 timestamp:2019-04-16T06:14:27.000Z filled_size:0 order_type:0 status:open filled_notional:0 funds: instrument_id:IOTA-USDT notional: product_id:IOTA-USDT side:buy size:8.994]
+type SpotOrder struct {
+	OrderID        string  `json:"order_id"`               // 订单ID
+	InstrumentID   string  `json:"instrument_id"`          // 币对名称
+	ProductID      string  `json:"product_id"`             // 币对名称
+	ClientOid      string  `json:"client_oid"`             // 用户设置的订单ID
+	CreatedAt      string  `json:"created_at"`             // 下单时间
+	Timestamp      string  `json:"timestamp"`              // 订单创建时间
+	Status         string  `json:"status"`                 // all:所有状态 open:未成交 part_filled:部分成交 canceling:撤销中 filled:已成交 cancelled:已撤销 ordering:下单中，failure：下单失败
+	Type           string  `json:"type"`                   // limit,market(默认是limit)
+	Side           string  `json:"side"`                   // buy or sell
+	Funds          string  `json:"funds"`                  // ??
+	NotionalStr    string  `json:"notional"`               // 买入金额，市价买入时返回
+	FilledNotional float64 `json:"filled_notional,string"` // 已成交金额
+	FilledSize     float64 `json:"filled_size,string"`     // 已成交数量
+	OrderType      float64 `json:"order_type,string"`      // 参数填数字，0：普通委托（order type不填或填0都是普通委托） 1：只做Maker（Post only） 2：全部成交或立即取消（FOK） 3：立即成交并取消剩余（IOC）
+	Price          float64 `json:"price,string"`           // 价格
+	Size           float64 `json:"size,string"`            // 交易货币数量
+}
 
+func (client *Client) GetSpotOrdersPending(options *map[string]string) (orders []SpotOrder, err error) {
 	fullOptions := NewParams()
 	uri := SPOT_ORDERS_PENDING
 	if options != nil && len(*options) > 0 {
@@ -112,10 +138,10 @@ func (client *Client) GetSpotOrdersPending(options *map[string]string) (*[]map[s
 		uri = BuildParams(SPOT_ORDERS_PENDING, fullOptions)
 	}
 
-	if _, err := client.Request(GET, uri, nil, &r); err != nil {
+	if _, err := client.Request(GET, uri, nil, &orders); err != nil {
 		return nil, err
 	}
-	return &r, nil
+	return orders, nil
 }
 
 /*

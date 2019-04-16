@@ -252,11 +252,11 @@ func (a *OKWSAgent) handleTableResponse(r interface{}) error {
 }
 
 func (a *OKWSAgent) work() {
-	defer func() {
-		a := recover()
-		log.Printf("Work End. Recover msg: %+v", a)
-		debug.PrintStack()
-	}()
+	// defer func() {
+	// 	a := recover()
+	// 	log.Printf("Work End. Recover msg: %+v", a)
+	// 	debug.PrintStack()
+	// }()
 
 	defer a.Stop()
 
@@ -281,7 +281,6 @@ func (a *OKWSAgent) work() {
 			break
 		case <-a.stopCh:
 			return
-
 		}
 	}
 }
