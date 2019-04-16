@@ -1,6 +1,8 @@
 package okex
 
-import "strings"
+import (
+	"strings"
+)
 
 /*
 币币账户信息
@@ -168,6 +170,16 @@ func (client *Client) GetSpotFills(order_id, instrument_id string, options *map[
 	return &r, nil
 }
 
+// SpotInstrumentsDesc :
+type SpotInstrumentsDesc struct {
+	BaseCurrency  string  `json:"base_currency"`
+	InstrumentID  string  `json:"instrument_id"`
+	QuoteCurrency string  `json:"quote_currency"`
+	MinSize       float64 `json:"min_size,string"`
+	SizeIncrement float64 `json:"size_increment,string"`
+	TickSize      float64 `json:"tick_size,string"`
+}
+
 /*
 获取币对信息
 用于获取行情数据，这组公开接口提供了行情数据的快照，无需认证即可调用。
@@ -178,13 +190,13 @@ func (client *Client) GetSpotFills(order_id, instrument_id string, options *map[
 HTTP请求
 GET /api/spot/v3/instruments
 */
-func (client *Client) GetSpotInstruments() (*[]map[string]interface{}, error) {
-	r := []map[string]interface{}{}
+func (client *Client) GetSpotInstruments() ([]SpotInstrumentsDesc, error) {
+	var r []SpotInstrumentsDesc
 
 	if _, err := client.Request(GET, SPOT_INSTRUMENTS, nil, &r); err != nil {
 		return nil, err
 	}
-	return &r, nil
+	return r, nil
 }
 
 /*

@@ -104,6 +104,34 @@ func (a *OKWSAgent) Subscribe(channel, filter string, cb ReceivedDataCallback) e
 	return nil
 }
 
+func (a *OKWSAgent) SubscribeEx(channel string, filters []string, cb ReceivedDataCallback) error {
+	a.processMut.Lock()
+	defer a.processMut.Unlock()
+
+	var sts []*SubscriptionTopic
+	for _, filter := range filters {
+		sts = append(sts, &SubscriptionTopic{
+			channel: channel,
+			filter:  filter,
+		})
+	}
+
+	bo, err := subscribeOp(sts)
+	if err != nil {
+		return err
+	}
+
+	msg, err := Struct2JsonString(bo)
+	log.Printf("Send Msg: %s", msg)
+	if err := a.conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
+		return err
+	}
+
+	a.activeChannels[channel] = false
+	a.subMap[channel] = cb
+	return nil
+}
+
 func (a *OKWSAgent) UnSubscribe(channel, filter string) error {
 	a.processMut.Lock()
 	defer a.processMut.Unlock()
@@ -248,6 +276,7 @@ func (a *OKWSAgent) work() {
 		case <-a.signalCh:
 			break
 		case err := <-a.errCh:
+			log.Printf("%v", err)
 			DefaultDataCallBack(err)
 			break
 		case <-a.stopCh:
@@ -269,6 +298,7 @@ func (a *OKWSAgent) receive() {
 	for {
 		messageType, message, err := a.conn.ReadMessage()
 		if err != nil {
+			log.Printf("a.conn.ReadMessage failed : %v", err)
 			a.errCh <- err
 			break
 		}
