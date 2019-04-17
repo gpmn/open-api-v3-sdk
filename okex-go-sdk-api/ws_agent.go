@@ -24,9 +24,10 @@ import (
 )
 
 type OKWSAgent struct {
-	baseUrl string
-	config  *Config
-	conn    *websocket.Conn
+	autoRestart bool
+	baseUrl     string
+	config      *Config
+	conn        *websocket.Conn
 
 	wsEvtCh  chan interface{}
 	wsErrCh  chan interface{}
@@ -42,35 +43,48 @@ type OKWSAgent struct {
 	processMut sync.Mutex
 }
 
-func (a *OKWSAgent) Start(config *Config) error {
+func (a *OKWSAgent) Restart() error {
+	if a.autoRestart {
+		return a.Start(a.config, a.autoRestart)
+	}
+	return nil
+}
+
+func (a *OKWSAgent) Start(config *Config, autoRestart bool) error {
 	a.baseUrl = config.WSEndpoint + "ws/v3?compress=true"
 	log.Printf("Connecting to %s", a.baseUrl)
 	c, _, err := websocket.DefaultDialer.Dial(a.baseUrl, nil)
 
 	if err != nil {
 		log.Fatalf("dial:%+v", err)
+		if autoRestart {
+			go func() {
+				time.Sleep(time.Second * 3)
+				go a.Start(config, true)
+			}()
+		}
 		return err
-	} else {
-		log.Printf("Connected to %s", a.baseUrl)
-		a.conn = c
-		a.config = config
-
-		a.wsEvtCh = make(chan interface{})
-		a.wsErrCh = make(chan interface{})
-		a.wsTbCh = make(chan interface{})
-		a.errCh = make(chan error)
-		a.stopCh = make(chan interface{}, 16)
-		a.signalCh = make(chan os.Signal)
-		a.activeChannels = make(map[string]bool)
-		a.subMap = make(map[string]ReceivedDataCallback)
-		a.hotDepthsMap = make(map[string]*WSHotDepths)
-
-		signal.Notify(a.signalCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-
-		go a.work()
-		go a.receive()
-		go a.finalize()
 	}
+	log.Printf("Connected to %s", a.baseUrl)
+	a.conn = c
+	a.config = config
+	a.autoRestart = autoRestart
+
+	a.wsEvtCh = make(chan interface{})
+	a.wsErrCh = make(chan interface{})
+	a.wsTbCh = make(chan interface{})
+	a.errCh = make(chan error)
+	a.stopCh = make(chan interface{}, 16)
+	a.signalCh = make(chan os.Signal)
+	a.activeChannels = make(map[string]bool)
+	a.subMap = make(map[string]ReceivedDataCallback)
+	a.hotDepthsMap = make(map[string]*WSHotDepths)
+
+	signal.Notify(a.signalCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
+	go a.work()
+	go a.receive()
+	go a.finalize()
 
 	return nil
 }
@@ -190,6 +204,13 @@ func (a *OKWSAgent) Stop() error {
 func (a *OKWSAgent) finalize() error {
 	defer func() {
 		log.Printf("Finalize End. Connection to WebSocket is closed.")
+		if a.autoRestart {
+			go func() {
+				time.Sleep(time.Second * 3)
+				log.Printf("auto restart ...")
+				a.Restart()
+			}()
+		}
 	}()
 
 	select {
