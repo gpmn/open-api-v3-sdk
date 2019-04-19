@@ -262,16 +262,18 @@ func (a *OKWSAgent) receive() {
 				time.Sleep(3 * time.Second)
 				continue
 			}
-			if nil != a.startHook {
-				if err = a.startHook(); nil != err {
-					log.Printf("a.receive - a.startHook failed : %v, restart later", err)
-					conn.Close()
-					time.Sleep(3 * time.Second)
-				}
-			}
 			a.connLock.Lock()
 			a.conn = conn
 			a.connLock.Unlock()
+			if nil != a.startHook {
+				if err = a.startHook(); nil != err {
+					log.Printf("a.receive - a.startHook failed : %v, restart later", err)
+					a.connLock.Lock()
+					conn.Close()
+					a.connLock.Unlock()
+					time.Sleep(3 * time.Second)
+				}
+			}
 			continue
 		}
 
