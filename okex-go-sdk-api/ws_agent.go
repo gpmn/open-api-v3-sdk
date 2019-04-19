@@ -263,6 +263,7 @@ func (a *OKWSAgent) receive() {
 				continue
 			}
 			a.connLock.Lock()
+			log.Printf("a.receive - conn changed from %p -> %p", a.conn.UnderlyingConn(), conn.UnderlyingConn())
 			a.conn = conn
 			a.connLock.Unlock()
 			if nil != a.startHook {
