@@ -15,26 +15,25 @@ import (
 	"github.com/gorilla/websocket"
 
 	"log"
-	"os"
-	"os/signal"
-	"runtime/debug"
 	"sync"
-	"syscall"
 	"time"
 )
 
-type OKWSAgent struct {
-	autoRestart bool
-	baseUrl     string
-	config      *Config
-	conn        *websocket.Conn
+const (
+	maxPongInterval = 35 * time.Second
+)
 
-	wsEvtCh  chan interface{}
-	wsErrCh  chan interface{}
-	wsTbCh   chan interface{}
-	stopCh   chan interface{}
-	errCh    chan error
-	signalCh chan os.Signal
+type OKWSAgent struct {
+	lastPongTm time.Time
+	startHook  func() error
+	baseUrl    string
+	config     *Config
+	conn       *websocket.Conn
+	connLock   sync.Mutex
+
+	wsEvtCh chan interface{}
+	wsErrCh chan interface{}
+	wsTbCh  chan interface{}
 
 	subMap         map[string]ReceivedDataCallback
 	activeChannels map[string]bool
@@ -43,49 +42,33 @@ type OKWSAgent struct {
 	processMut sync.Mutex
 }
 
-func (a *OKWSAgent) Restart() error {
-	if a.autoRestart {
-		return a.Start(a.config, a.autoRestart)
-	}
-	return nil
-}
-
-func (a *OKWSAgent) Start(config *Config, autoRestart bool) error {
+func (a *OKWSAgent) Start(config *Config, startHook func() error) error { // 没有restart、stop的必要，删除stop和finize
 	a.baseUrl = config.WSEndpoint + "ws/v3?compress=true"
 	log.Printf("Connecting to %s", a.baseUrl)
 	c, _, err := websocket.DefaultDialer.Dial(a.baseUrl, nil)
 
 	if err != nil {
 		log.Fatalf("dial:%+v", err)
-		if autoRestart {
-			go func() {
-				time.Sleep(time.Second * 3)
-				go a.Start(config, true)
-			}()
-		}
 		return err
 	}
 	log.Printf("Connected to %s", a.baseUrl)
+	a.lastPongTm = time.Now().Add(maxPongInterval)
 	a.conn = c
 	a.config = config
-	a.autoRestart = autoRestart
+	a.startHook = startHook
 
 	a.wsEvtCh = make(chan interface{})
 	a.wsErrCh = make(chan interface{})
 	a.wsTbCh = make(chan interface{})
-	a.errCh = make(chan error)
-	a.stopCh = make(chan interface{}, 16)
-	a.signalCh = make(chan os.Signal)
 	a.activeChannels = make(map[string]bool)
 	a.subMap = make(map[string]ReceivedDataCallback)
 	a.hotDepthsMap = make(map[string]*WSHotDepths)
 
-	signal.Notify(a.signalCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
-
 	go a.work()
 	go a.receive()
-	go a.finalize()
-
+	if startHook != nil {
+		return startHook()
+	}
 	return nil
 }
 
@@ -101,19 +84,15 @@ func (a *OKWSAgent) Subscribe(channel, filter string, cb ReceivedDataCallback) e
 
 	msg, err := Struct2JsonString(bo)
 	log.Printf("Send Msg: %s", msg)
-	if err := a.conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
+	a.connLock.Lock()
+	err = a.conn.WriteMessage(websocket.TextMessage, []byte(msg))
+	a.connLock.Unlock()
+	if err != nil {
 		return err
 	}
 
-	//cbs := a.subMap[st.channel]
-	// if cbs == nil {
-	// 	cbs = []ReceivedDataCallback{}
 	a.activeChannels[st.channel] = false
-	// }
-	//cbs = append(cbs, cb)
 	a.subMap[st.channel] = cb
-	// fullTopic, err := st.ToString()
-	// a.subMap[fullTopic] = cbs
 
 	return nil
 }
@@ -137,7 +116,10 @@ func (a *OKWSAgent) SubscribeEx(channel string, filters []string, cb ReceivedDat
 
 	msg, err := Struct2JsonString(bo)
 	log.Printf("Send Msg: %s", msg)
-	if err := a.conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
+	a.connLock.Lock()
+	err = a.conn.WriteMessage(websocket.TextMessage, []byte(msg))
+	a.connLock.Unlock()
+	if err != nil {
 		return err
 	}
 
@@ -158,7 +140,10 @@ func (a *OKWSAgent) UnSubscribe(channel, filter string) error {
 
 	msg, err := Struct2JsonString(bo)
 	log.Printf("Send Msg: %s", msg)
-	if err := a.conn.WriteMessage(websocket.TextMessage, []byte(msg)); err != nil {
+	a.connLock.Lock()
+	err = a.conn.WriteMessage(websocket.TextMessage, []byte(msg))
+	a.connLock.Unlock()
+	if err != nil {
 		return err
 	}
 
@@ -169,21 +154,22 @@ func (a *OKWSAgent) UnSubscribe(channel, filter string) error {
 }
 
 func (a *OKWSAgent) Login(apiKey, passphrase string) error {
-
 	timestamp := EpochTime()
-
 	preHash := PreHashString(timestamp, GET, "/users/self/verify", "")
-	if sign, err := HmacSha256Base64Signer(preHash, a.config.SecretKey); err != nil {
+	sign, err := HmacSha256Base64Signer(preHash, a.config.SecretKey)
+	if err != nil {
 		return err
-	} else {
-		op, err := loginOp(apiKey, passphrase, timestamp, sign)
-		data, err := Struct2JsonString(op)
-		err = a.conn.WriteMessage(websocket.TextMessage, []byte(data))
-		if err != nil {
-			return err
-		}
-		time.Sleep(time.Millisecond * 100)
 	}
+	op, err := loginOp(apiKey, passphrase, timestamp, sign)
+	data, err := Struct2JsonString(op)
+	a.connLock.Lock()
+	err = a.conn.WriteMessage(websocket.TextMessage, []byte(data))
+	a.connLock.Unlock()
+	if err != nil {
+		return err
+	}
+	time.Sleep(time.Millisecond * 100)
+
 	return nil
 }
 
@@ -191,46 +177,11 @@ func (a *OKWSAgent) keepalive() {
 	a.ping()
 }
 
-func (a *OKWSAgent) Stop() error {
-	defer func() {
-		a := recover()
-		log.Printf("Stop End. Recover msg: %+v", a)
-	}()
-
-	close(a.stopCh)
-	return nil
-}
-
-func (a *OKWSAgent) finalize() error {
-	defer func() {
-		log.Printf("Finalize End. Connection to WebSocket is closed.")
-		if a.autoRestart {
-			go func() {
-				time.Sleep(time.Second * 3)
-				log.Printf("auto restart ...")
-				a.Restart()
-			}()
-		}
-	}()
-
-	select {
-	case <-a.stopCh:
-		if a.conn != nil {
-			close(a.errCh)
-			close(a.wsTbCh)
-			close(a.wsEvtCh)
-			close(a.wsErrCh)
-			return a.conn.Close()
-		}
-	}
-
-	return nil
-}
-
 func (a *OKWSAgent) ping() {
 	msg := "ping"
-	//log.Printf("Send Msg: %s", msg)
+	a.connLock.Lock()
 	a.conn.WriteMessage(websocket.TextMessage, []byte(msg))
+	a.connLock.Unlock()
 }
 
 func (a *OKWSAgent) GzipDecode(in []byte) ([]byte, error) {
@@ -273,20 +224,19 @@ func (a *OKWSAgent) handleTableResponse(r interface{}) error {
 }
 
 func (a *OKWSAgent) work() {
-	// defer func() {
-	// 	a := recover()
-	// 	log.Printf("Work End. Recover msg: %+v", a)
-	// 	debug.PrintStack()
-	// }()
+	ticker := time.NewTicker(9 * time.Second)
 
-	defer a.Stop()
-
-	ticker := time.NewTicker(29 * time.Second)
-	defer ticker.Stop()
-
+	a.keepalive()
 	for {
 		select {
 		case <-ticker.C:
+			if time.Now().Sub(a.lastPongTm) > maxPongInterval {
+				log.Printf("lastPongTm %s timeout, reset connection", a.lastPongTm.Local().Format(time.RFC3339))
+				a.connLock.Lock()
+				a.conn.Close()
+				a.connLock.Unlock()
+				a.lastPongTm = time.Now().Add(maxPongInterval)
+			}
 			a.keepalive()
 		case errR := <-a.wsErrCh:
 			a.handleErrResponse(errR)
@@ -294,33 +244,35 @@ func (a *OKWSAgent) work() {
 			a.handleEventResponse(evtR)
 		case tb := <-a.wsTbCh:
 			a.handleTableResponse(tb)
-		case <-a.signalCh:
-			break
-		case err := <-a.errCh:
-			log.Printf("%v", err)
-			DefaultDataCallBack(err)
-			break
-		case <-a.stopCh:
-			return
 		}
 	}
 }
 
 func (a *OKWSAgent) receive() {
-	defer func() {
-		a := recover()
-		if a != nil {
-			log.Printf("Receive End. Recover msg: %+v", a)
-			debug.PrintStack()
-		}
-	}()
-
 	for {
 		messageType, message, err := a.conn.ReadMessage()
 		if err != nil {
 			log.Printf("a.conn.ReadMessage failed : %v", err)
-			a.errCh <- err
-			break
+			a.connLock.Lock()
+			a.conn.Close()
+			a.connLock.Unlock()
+			conn, _, err := websocket.DefaultDialer.Dial(a.baseUrl, nil)
+			if err != nil {
+				log.Fatalf("a.receive : dial failed :%+v", err)
+				time.Sleep(3 * time.Second)
+				continue
+			}
+			if nil != a.startHook {
+				if err = a.startHook(); nil != err {
+					log.Printf("a.receive - a.startHook failed : %v, restart later", err)
+					conn.Close()
+					time.Sleep(3 * time.Second)
+				}
+			}
+			a.connLock.Lock()
+			a.conn = conn
+			a.connLock.Unlock()
+			continue
 		}
 
 		txtMsg := message
@@ -331,6 +283,7 @@ func (a *OKWSAgent) receive() {
 		}
 
 		if string(txtMsg) == "pong" {
+			a.lastPongTm = time.Now()
 			continue
 		}
 

@@ -18,7 +18,7 @@ type SpotAccount struct {
 	Currency  string  `json:"currency"`
 	AccountID string  `json:"id"`
 	Balance   float64 `json:"balance,string"`
-	Available float64 `json:"avaliable,string"`
+	Available float64 `json:"available,string"`
 	Hold      float64 `json:"hold,string"`
 }
 
@@ -354,9 +354,13 @@ func (client *Client) PostSpotOrders(side, instrument_id string, optionalOrderIn
 	postParams["instrument_id"] = instrument_id
 
 	if optionalOrderInfo != nil && len(*optionalOrderInfo) > 0 {
-		postParams["client_oid"] = (*optionalOrderInfo)["client_oid"]
 		postParams["type"] = (*optionalOrderInfo)["type"]
-		postParams["margin_trading"] = (*optionalOrderInfo)["margin_trading"]
+		if val, ok := (*optionalOrderInfo)["client_oid"]; ok {
+			postParams["client_oid"] = val
+		}
+		if val, ok := (*optionalOrderInfo)["margin_trading"]; ok {
+			postParams["margin_trading"] = val
+		}
 
 		if postParams["type"] == "limit" {
 			postParams["price"] = (*optionalOrderInfo)["price"]

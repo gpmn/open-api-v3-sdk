@@ -127,7 +127,6 @@ func (client *Client) Request(method string, requestPath string,
 		}
 		response.Header.Add(ResultPageJsonString, pageJsonString)
 	}
-
 	if status >= 200 && status < 300 {
 		if body != nil && result != nil {
 			err := JsonBytes2Struct(body, result)
