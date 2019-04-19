@@ -52,7 +52,7 @@ func (a *OKWSAgent) Start(config *Config, startHook func() error) error { // 没
 		return err
 	}
 	log.Printf("Connected to %s", a.baseUrl)
-	a.lastPongTm = time.Now().Add(maxPongInterval)
+	a.lastPongTm = time.Now().Add(2 * maxPongInterval)
 	a.conn = c
 	a.config = config
 	a.startHook = startHook
@@ -235,7 +235,7 @@ func (a *OKWSAgent) work() {
 				a.connLock.Lock()
 				a.conn.Close()
 				a.connLock.Unlock()
-				a.lastPongTm = time.Now().Add(maxPongInterval)
+				a.lastPongTm = time.Now().Add(2 * maxPongInterval)
 			}
 			a.keepalive()
 		case errR := <-a.wsErrCh:
