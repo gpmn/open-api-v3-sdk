@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"compress/flate"
 	"io/ioutil"
+	"net/http"
 
 	"github.com/gorilla/websocket"
 
@@ -45,7 +46,12 @@ type OKWSAgent struct {
 func (a *OKWSAgent) Start(config *Config, startHook func() error) error { // 没有restart、stop的必要，删除stop和finize
 	a.baseUrl = config.WSEndpoint + "ws/v3?compress=true"
 	log.Printf("Connecting to %s", a.baseUrl)
-	c, _, err := websocket.DefaultDialer.Dial(a.baseUrl, nil)
+	//c, _, err := websocket.DefaultDialer.Dial(a.baseUrl, nil)
+	dialer := &websocket.Dialer{
+		Proxy:            http.ProxyFromEnvironment,
+		HandshakeTimeout: 20 * time.Second,
+	}
+	c, _, err := dialer.Dial(a.baseUrl, nil)
 
 	if err != nil {
 		log.Fatalf("dial:%+v", err)
