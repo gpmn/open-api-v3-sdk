@@ -13,11 +13,12 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/gorilla/websocket"
-
 	"log"
 	"sync"
 	"time"
+
+	"github.com/gorilla/websocket"
+	"github.com/jinzhu/copier"
 )
 
 const (
@@ -39,6 +40,7 @@ type OKWSAgent struct {
 	subMap         map[string]ReceivedDataCallback
 	activeChannels map[string]bool
 	hotDepthsMap   map[string]*WSHotDepths
+	hotLock        sync.RWMutex
 
 	processMut sync.Mutex
 }
@@ -311,6 +313,7 @@ func (a *OKWSAgent) receive() {
 		case *WSDepthTableResponse:
 
 			dtr := rsp.(*WSDepthTableResponse)
+			a.hotLock.Lock()
 			hotDepths := a.hotDepthsMap[dtr.Table]
 			if hotDepths == nil {
 				hotDepths = NewWSHotDepths(dtr.Table)
@@ -319,6 +322,7 @@ func (a *OKWSAgent) receive() {
 			} else {
 				hotDepths.loadWSDepthTableResponse(dtr)
 			}
+			a.hotLock.Unlock()
 			a.wsTbCh <- dtr
 
 		case *WSTableResponse:
@@ -328,4 +332,24 @@ func (a *OKWSAgent) receive() {
 			log.Printf("LoadedRep: Warning - unknown response : %+v", string(txtMsg))
 		}
 	}
+}
+
+// GetOrderBook :
+func (a *OKWSAgent) GetOrderBook(channel, instrumentID string) *WSDepthItem {
+	a.hotLock.Lock()
+	defer a.hotLock.Unlock()
+
+	host := a.hotDepthsMap[channel]
+	if host == nil {
+		return nil
+	}
+	host.lock.RLock()
+	defer host.lock.RUnlock()
+	dp := host.DepthMap[instrumentID]
+	if dp == nil {
+		return nil
+	}
+	var res WSDepthItem
+	copier.Copy(&res, dp)
+	return &res
 }

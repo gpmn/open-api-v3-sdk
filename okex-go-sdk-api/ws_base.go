@@ -15,6 +15,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type BaseOp struct {
@@ -235,6 +236,7 @@ func (r *WSDepthTableResponse) Valid() bool {
 }
 
 type WSHotDepths struct {
+	lock     sync.RWMutex
 	Table    string
 	DepthMap map[string]*WSDepthItem
 }
@@ -242,7 +244,9 @@ type WSHotDepths struct {
 func NewWSHotDepths(tb string) *WSHotDepths {
 	hd := WSHotDepths{}
 	hd.Table = tb
+	hd.lock.Lock()
 	hd.DepthMap = map[string]*WSDepthItem{}
+	hd.lock.Unlock()
 	return &hd
 }
 
@@ -262,7 +266,9 @@ func (d *WSHotDepths) loadWSDepthTableResponse(r *WSDepthTableResponse) error {
 		for i := 0; i < len(r.Data); i++ {
 			crc32BaseBuffer, expectCrc32 := calCrc32(&r.Data[i].Asks, &r.Data[i].Bids)
 			if expectCrc32 == r.Data[i].Checksum {
+				d.lock.Lock()
 				d.DepthMap[r.Data[i].InstrumentId] = &r.Data[i]
+				d.lock.Unlock()
 			} else {
 				return fmt.Errorf("Checksum's not correct. LocalString: %s, LocalCrc32: %d, RemoteCrc32: %d",
 					crc32BaseBuffer.String(), expectCrc32, r.Data[i].Checksum)
@@ -272,7 +278,10 @@ func (d *WSHotDepths) loadWSDepthTableResponse(r *WSDepthTableResponse) error {
 	case "update":
 		for i := 0; i < len(r.Data); i++ {
 			newDI := r.Data[i]
+			d.lock.Lock()
+			defer d.lock.Unlock()
 			oldDI := d.DepthMap[newDI.InstrumentId]
+
 			if oldDI != nil {
 				if err := oldDI.update(&newDI); err != nil {
 					return err
