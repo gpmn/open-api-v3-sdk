@@ -114,7 +114,7 @@ type WSDepthItem struct {
 	Checksum     int32            `json:"checksum"`
 }
 
-func mergeDepths(oldDepths [][4]interface{}, newDepths [][4]interface{}) (*[][4]interface{}, error) {
+func mergeDepths(oldDepths [][4]interface{}, newDepths [][4]interface{}, asc bool /*上升序*/) (*[][4]interface{}, error) {
 
 	mergedDepths := [][4]interface{}{}
 	oldIdx, newIdx := 0, 0
@@ -130,42 +130,53 @@ func mergeDepths(oldDepths [][4]interface{}, newDepths [][4]interface{}) (*[][4]
 			return nil, fmt.Errorf("Bad price, check why. e1: %+v, e2: %+v", e1, e2)
 		}
 
-		if oldPrice == newPrice {
-			newNum := StringToInt64(newItem[1].(string))
+		newNum := StringToInt64(newItem[1].(string))
+		oldNum := StringToInt64(oldItem[1].(string))
 
+		if oldPrice == newPrice {
 			if newNum > 0 {
 				mergedDepths = append(mergedDepths, newItem)
 			}
 
 			oldIdx++
 			newIdx++
-		} else if oldPrice > newPrice {
-			mergedDepths = append(mergedDepths, newItem)
+		} else if asc && oldPrice > newPrice || !asc && oldPrice < newPrice {
+			if newNum > 0 {
+				mergedDepths = append(mergedDepths, newItem)
+			}
 			newIdx++
-		} else if oldPrice < newPrice {
-			mergedDepths = append(mergedDepths, oldItem)
+		} else if asc && oldPrice < newPrice || !asc && oldPrice > newPrice {
+			if oldNum > 0 {
+				mergedDepths = append(mergedDepths, oldItem)
+			}
 			oldIdx++
 		}
 	}
 
 	for ; oldIdx < len(oldDepths); oldIdx++ {
-		mergedDepths = append(mergedDepths, oldDepths[oldIdx])
+		num := StringToInt64(oldDepths[oldIdx][1].(string))
+		if num > 0 {
+			mergedDepths = append(mergedDepths, oldDepths[oldIdx])
+		}
 	}
 
 	for ; newIdx < len(newDepths); newIdx++ {
-		mergedDepths = append(mergedDepths, newDepths[newIdx])
+		num := StringToInt64(newDepths[newIdx][1].(string))
+		if num > 0 {
+			mergedDepths = append(mergedDepths, newDepths[newIdx])
+		}
 	}
 
 	return &mergedDepths, nil
 }
 
 func (di *WSDepthItem) update(newDI *WSDepthItem) error {
-	newAskDepths, err1 := mergeDepths(di.Asks, newDI.Asks)
+	newAskDepths, err1 := mergeDepths(di.Asks, newDI.Asks, true)
 	if err1 != nil {
 		return err1
 	}
 
-	newBidDepths, err2 := mergeDepths(di.Bids, newDI.Bids)
+	newBidDepths, err2 := mergeDepths(di.Bids, newDI.Bids, false)
 	if err2 != nil {
 		return err2
 	}
@@ -284,6 +295,7 @@ func (d *WSHotDepths) loadWSDepthTableResponse(r *WSDepthTableResponse) error {
 
 			if oldDI != nil {
 				if err := oldDI.update(&newDI); err != nil {
+					log.Printf("oldID.update failed : %v", err)
 					return err
 				}
 			} else {

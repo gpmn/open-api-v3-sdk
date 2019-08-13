@@ -317,14 +317,20 @@ func (a *OKWSAgent) receive() {
 			hotDepths := a.hotDepthsMap[dtr.Table]
 			if hotDepths == nil {
 				hotDepths = NewWSHotDepths(dtr.Table)
-				hotDepths.loadWSDepthTableResponse(dtr)
-				a.hotDepthsMap[dtr.Table] = hotDepths
+				if err = hotDepths.loadWSDepthTableResponse(dtr); nil == err {
+					a.hotDepthsMap[dtr.Table] = hotDepths
+				}
 			} else {
-				hotDepths.loadWSDepthTableResponse(dtr)
+				err = hotDepths.loadWSDepthTableResponse(dtr)
 			}
 			a.hotLock.Unlock()
-			a.wsTbCh <- dtr
-
+			if nil != err {
+				var errDep WSDepthTableResponse
+				errDep.Action = "corrupt"
+				a.wsTbCh <- &errDep
+			} else {
+				a.wsTbCh <- dtr
+			}
 		case *WSTableResponse:
 			tb := rsp.(*WSTableResponse)
 			a.wsTbCh <- tb
@@ -341,12 +347,14 @@ func (a *OKWSAgent) GetOrderBook(channel, instrumentID string) *WSDepthItem {
 
 	host := a.hotDepthsMap[channel]
 	if host == nil {
+		log.Printf("a.GetOrderBook - host for %s is nil", channel)
 		return nil
 	}
 	host.lock.RLock()
 	defer host.lock.RUnlock()
 	dp := host.DepthMap[instrumentID]
 	if dp == nil {
+		log.Printf("a.GetOrderBook - depthMap for %s is nil", instrumentID)
 		return nil
 	}
 	var res WSDepthItem
