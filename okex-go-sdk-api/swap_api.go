@@ -198,7 +198,7 @@ GET /api/swap/v3/orders/<instrument_id>
 GET /api/swap/v3/orders/BTC-USD-SWAP?status=2&from=4&limit=30
 */
 func (client *Client) GetSwapOrderByInstrumentId(instrumentId string, paramMap map[string]string) (*SwapOrdersInfo, error) {
-	if paramMap["status"] == "" || len(instrumentId) == 0 {
+	if paramMap["state"] == "" || len(instrumentId) == 0 {
 		return nil, errors.New("Request Parameter's not correct, instrument_id and status is required.")
 	}
 
