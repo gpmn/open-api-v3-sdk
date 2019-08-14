@@ -195,11 +195,11 @@ HTTP请求
 GET /api/swap/v3/orders/<instrument_id>
 
 请求示例
-GET /api/swap/v3/orders/BTC-USD-SWAP?status=2&from=4&limit=30
+GET /api/swap/v3/orders/BTC-USD-SWAP?state=2&from=4&limit=30
 */
 func (client *Client) GetSwapOrderByInstrumentId(instrumentId string, paramMap map[string]string) (*SwapOrdersInfo, error) {
 	if paramMap["state"] == "" || len(instrumentId) == 0 {
-		return nil, errors.New("Request Parameter's not correct, instrument_id and status is required.")
+		return nil, errors.New("Request Parameter's not correct, instrument_id and state is required.")
 	}
 
 	baseUri := GetInstrumentIdUri(SWAP_INSTRUMENT_ORDER_LIST, instrumentId)

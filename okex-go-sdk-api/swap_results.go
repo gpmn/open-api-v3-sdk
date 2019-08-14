@@ -86,7 +86,7 @@ type SwapBatchCancelOrderResult struct {
 
 type BaseOrderInfo struct {
 	InstrumentId string `json:"instrument_id"`
-	Status       string `json:"status"`
+	State        string `json:"state"`
 	OrderId      string `json:"order_id"`
 	Timestamp    string `json:"timestamp"`
 	Price        string `json:"price"`
@@ -96,6 +96,7 @@ type BaseOrderInfo struct {
 	FilledQty    string `json:"filled_qty"`
 	ContractVal  string `json:"contract_val"`
 	Type         string `json:"type"`
+	OrderType    string `json:"order_type"`
 	ClientOid    string `json:"client_oid"`
 }
 
