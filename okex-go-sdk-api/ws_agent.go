@@ -12,6 +12,7 @@ import (
 	"compress/flate"
 	"io/ioutil"
 	"net/http"
+	"reflect"
 
 	"log"
 	"sync"
@@ -217,6 +218,9 @@ func (a *OKWSAgent) handleTableResponse(r interface{}) error {
 		tb = r.(*WSTableResponse).Table
 	case *WSDepthTableResponse:
 		tb = r.(*WSDepthTableResponse).Table
+	default:
+		log.Printf("handleTableResponse - unknown %v", reflect.TypeOf(r))
+
 	}
 
 	cb := a.subMap[tb]
@@ -311,7 +315,6 @@ func (a *OKWSAgent) receive() {
 			er := rsp.(*WSEventResponse)
 			a.wsEvtCh <- er
 		case *WSDepthTableResponse:
-
 			dtr := rsp.(*WSDepthTableResponse)
 			a.hotLock.Lock()
 			hotDepths := a.hotDepthsMap[dtr.Table]
@@ -325,12 +328,10 @@ func (a *OKWSAgent) receive() {
 			}
 			a.hotLock.Unlock()
 			if nil != err {
-				var errDep WSDepthTableResponse
-				errDep.Action = "corrupt"
-				a.wsTbCh <- &errDep
-			} else {
-				a.wsTbCh <- dtr
+				dtr.Action = "corrupt"
 			}
+			a.wsTbCh <- dtr
+
 		case *WSTableResponse:
 			tb := rsp.(*WSTableResponse)
 			a.wsTbCh <- tb
