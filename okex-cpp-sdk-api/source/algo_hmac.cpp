@@ -27,9 +27,9 @@ int HmacEncode(const char * algo,
     else if(strcasecmp("sha384", algo) == 0) {
         engine = EVP_sha384();
     }
-    else if(strcasecmp("sha", algo) == 0) {
-        engine = EVP_sha();
-    }
+    // else if(strcasecmp("sha", algo) == 0) {
+    //     engine = EVP_sha();
+    // }
     else {
         cout << "Algorithm " << algo << " is not supported by this program!" << endl;
         return -1;
@@ -37,13 +37,12 @@ int HmacEncode(const char * algo,
 
     output = (unsigned char*)malloc(EVP_MAX_MD_SIZE);
 
-    HMAC_CTX ctx;
-    HMAC_CTX_init(&ctx);
-    HMAC_Init_ex(&ctx, key, strlen(key), engine, NULL);
-    HMAC_Update(&ctx, (unsigned char*)input, strlen(input));        // input is OK; &input is WRONG !!!
+    HMAC_CTX *ctx = HMAC_CTX_new();
+    HMAC_Init_ex(ctx, key, strlen(key), engine, NULL);
+    HMAC_Update(ctx, (unsigned char*)input, strlen(input));        // input is OK; &input is WRONG !!!
 
-    HMAC_Final(&ctx, output, &output_length);
-    HMAC_CTX_cleanup(&ctx);
-
+    HMAC_Final(ctx, output, &output_length);
+    HMAC_CTX_free(ctx);
+    //HMAC_CTX_cleanup(ctx);
     return 0;
 }

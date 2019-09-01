@@ -51,7 +51,7 @@ add_executable(${PROJECT_NAME} source/main.cpp source/swap.cpp source/okapi_ws.h
         source/ett_api.cpp)
 
 # headers search paths ...
-set(CPPRESTSDK_INCLUDE_DIR "./libs/cpprestsdk/Release/include")
+set(CPPRESTSDK_INCLUDE_DIR "/usr/include/cpprest")
 set(MICROSERVICE_INCLUDE_DIR "./source/foundation/include")
 message(MICROSERVICE " ${MICROSERVICE_INCLUDE_DIR}")
 set(HEADER_SEARCH_PATHS ${CPPRESTSDK_INCLUDE_DIR} ${MICROSERVICE_INCLUDE_DIR} ${Boost_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR})
@@ -59,15 +59,15 @@ set(HEADER_SEARCH_PATHS ${CPPRESTSDK_INCLUDE_DIR} ${MICROSERVICE_INCLUDE_DIR} ${
 # library search paths ...
 if(APPLE)
     set(OPENSSL_LIBS "/usr/local/Cellar/openssl/${OPENSSL_VERSION}/lib/libssl.1.0.0.dylib;/usr/local/Cellar/openssl/${OPENSSL_VERSION}/lib/libcrypto.1.0.0.dylib")
-    set(CPPRESTSDK_LIBRARY "${PROJECT_SOURCE_DIR}/libs/cpprestsdk/build.debug/Binaries/libcpprest.a")
-    set(ZIP_LIBRARY "/usr/local/Cellar/zlib/1.2.11/lib/libz.dylib")
+    set(CPPRESTSDK_LIBRARY "/usr/lib/x86_64-linux-gnu/libcpprest.a")
+    set(ZIP_LIBRARY "/usr/lib/x86_64-linux-gnu/libz.a")
 
     set(LIBRARIES_SEARCH_PATHS ${OPENSSL_LIBS} ${Boost_LIBRARIES} ${CPPRESTSDK_LIBRARY} ${ZIP_LIBRARY})
 else()
     set(OPENSSL_LIBS "${OPENSSL_LIBRARIES}")
-    set(CPPRESTSDK_LIBRARY "${PROJECT_SOURCE_DIR}/libs/cpprestsdk/build.debug/Binaries/libcpprest.a")
-
-    set(LIBRARIES_SEARCH_PATHS ${CPPRESTSDK_LIBRARY} ${OPENSSL_LIBS} ${Boost_LIBRARIES})
+    set(CPPRESTSDK_LIBRARY "/usr/lib/x86_64-linux-gnu/libcpprest.a")
+    set(ZIP_LIBRARY "/usr/lib/x86_64-linux-gnu/libz.a")
+    set(LIBRARIES_SEARCH_PATHS ${CPPRESTSDK_LIBRARY} ${OPENSSL_LIBS} ${Boost_LIBRARIES} ${ZIP_LIBRARY})
 endif()
 
 message(BOOST_LIBS " ${Boost_LIBRARIES}")
