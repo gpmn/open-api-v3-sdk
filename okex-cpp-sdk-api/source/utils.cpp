@@ -131,54 +131,45 @@ void IterateJSONValue()
     */
 }
 
-int gzDecompress(Byte *zdata, uLong nzdata, Byte *data, uLong *ndata)
-{
-    int err = 0;
-    z_stream d_stream = {0}; /* decompression stream */
+int gzDecompress(uint8_t *in, size_t in_length, uint8_t* out, size_t *out_length){
+     int ret;
+     z_stream strm = {0};
 
-    static char dummy_head[2] = {
-            0x8 + 0x7 * 0x10,
-            (((0x8 + 0x7 * 0x10) * 0x100 + 30) / 31 * 31) & 0xFF,
-    };
+     strm.zalloc = Z_NULL;
+     strm.zfree = Z_NULL;
+     strm.opaque = Z_NULL;
+     strm.avail_in = 0;
+     strm.next_in = Z_NULL;
 
-    d_stream.zalloc = NULL;
-    d_stream.zfree = NULL;
-    d_stream.opaque = NULL;
-    d_stream.next_in = zdata;
-    d_stream.avail_in = 0;
-    d_stream.next_out = data;
+     ret = inflateInit2(&strm, -MAX_WBITS);
+     if (ret != Z_OK){
+          return ret;
+     }
 
+     strm.avail_in = in_length;
+     strm.next_in = in;
 
-    if (inflateInit2(&d_stream, -MAX_WBITS) != Z_OK) {
-        return -1;
-    }
+     do {
+          strm.avail_out = *out_length;
+          strm.next_out = out;
+          ret = inflate(&strm, Z_NO_FLUSH);
+          if(ret == Z_STREAM_ERROR){
+               return ret;
+          }
+            
+          switch (ret) {
+          case Z_NEED_DICT:
+          case Z_DATA_ERROR:
+          case Z_MEM_ERROR:
+               (void)inflateEnd(&strm);
+               return ret;
+          }
+     } while (strm.avail_out == 0);
 
-    // if(inflateInit2(&d_stream, 47) != Z_OK) return -1;
-
-    while (d_stream.total_out < *ndata && d_stream.total_in < nzdata) {
-        d_stream.avail_in = d_stream.avail_out = 1; /* force small buffers */
-        if((err = inflate(&d_stream, Z_NO_FLUSH)) == Z_STREAM_END)
-            break;
-
-        if (err != Z_OK) {
-            if (err == Z_DATA_ERROR) {
-                d_stream.next_in = (Bytef*) dummy_head;
-                d_stream.avail_in = sizeof(dummy_head);
-                if((err = inflate(&d_stream, Z_NO_FLUSH)) != Z_OK) {
-                    return -1;
-                }
-            } else {
-                return -1;
-            }
-        }
-    }
-
-    if (inflateEnd(&d_stream)!= Z_OK)
-        return -1;
-    *ndata = d_stream.total_out;
-    return 0;
+     (void)inflateEnd(&strm);
+     *out_length = strm.total_out;
+     return ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
 }
-
 
 unsigned int str_hex(unsigned char *str,unsigned char *hex)
 {
