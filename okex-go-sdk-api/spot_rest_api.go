@@ -86,8 +86,8 @@ func (client *Client) GetSpotOrders(status, instrument_id string, options *map[s
 	fullOptions["instrument_id"] = instrument_id
 	fullOptions["status"] = status
 	if options != nil && len(*options) > 0 {
-		fullOptions["from"] = (*options)["from"]
-		fullOptions["to"] = (*options)["to"]
+		fullOptions["before"] = (*options)["before"]
+		fullOptions["after"] = (*options)["after"]
 		fullOptions["limit"] = (*options)["limit"]
 	}
 
@@ -183,8 +183,8 @@ func (client *Client) GetSpotFills(order_id, instrument_id string, options *map[
 	fullOptions["instrument_id"] = instrument_id
 	fullOptions["order_id"] = order_id
 	if options != nil && len(*options) > 0 {
-		fullOptions["from"] = (*options)["from"]
-		fullOptions["to"] = (*options)["to"]
+		fullOptions["before"] = (*options)["before"]
+		fullOptions["after"] = (*options)["after"]
 		fullOptions["limit"] = (*options)["limit"]
 	}
 

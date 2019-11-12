@@ -3,6 +3,7 @@ package okex
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -50,7 +51,7 @@ func TestGetFuturesInstrumentsCurrencies(t *testing.T) {
 }
 
 func TestGetFuturesInstrumentBook(t *testing.T) {
-	insId := getValidInstrumentId()
+	insId := getValidFutureInstrumentId()
 	book, err := NewTestClient().GetFuturesInstrumentBook(insId, nil)
 	if err != nil {
 		t.Error(err)
@@ -62,7 +63,7 @@ func TestGetFuturesInstrumentBook2(t *testing.T) {
 	params := NewParams()
 	params["size"] = "10"
 	params["depth"] = "0.1"
-	insId := getValidInstrumentId()
+	insId := getValidFutureInstrumentId()
 	r, err := NewTestClient().GetFuturesInstrumentBook(insId, nil)
 
 	simpleAssertTrue(r, err, t, false)
@@ -76,8 +77,15 @@ func TestGetFuturesInstrumentAllTicker(t *testing.T) {
 	FmtPrintln("Futures Instrument all ticker: ", tickers)
 }
 
+func getFirstValidInstrumentId() string {
+	tickers, _ := NewTestClient().GetFuturesInstrumentAllTicker()
+	t := tickers[0]
+	return t.InstrumentId
+}
+
 func TestGetFuturesInstrumentTicker(t *testing.T) {
-	ticker, err := NewTestClient().GetFuturesInstrumentTicker(InstrumentId)
+	tId := getFirstValidInstrumentId()
+	ticker, err := NewTestClient().GetFuturesInstrumentTicker(tId)
 	if err != nil {
 		t.Error(err)
 	}
@@ -85,7 +93,8 @@ func TestGetFuturesInstrumentTicker(t *testing.T) {
 }
 
 func TestGetFuturesInstrumentTrades(t *testing.T) {
-	trades, err := NewTestClient().GetFuturesInstrumentTrades(InstrumentId)
+	instId := getFirstValidInstrumentId()
+	trades, err := NewTestClient().GetFuturesInstrumentTrades(instId, nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -102,7 +111,7 @@ func TestGetFuturesInstrumentCandles(t *testing.T) {
 	//optional["end"] = end
 	optional["granularity"] = Int2String(granularity)
 
-	insId := getValidInstrumentId()
+	insId := getValidFutureInstrumentId()
 
 	candles, err := NewTestClient().GetFuturesInstrumentCandles(insId, optional)
 	if err != nil {
@@ -139,7 +148,8 @@ func TestGetFuturesInstrumentCandles(t *testing.T) {
 }
 
 func TestGetFuturesInstrumentIndex(t *testing.T) {
-	index, err := NewTestClient().GetFuturesInstrumentIndex(InstrumentId)
+	instId := getFirstValidInstrumentId()
+	index, err := NewTestClient().GetFuturesInstrumentIndex(instId)
 	if err != nil {
 		t.Error(err)
 	}
@@ -147,7 +157,8 @@ func TestGetFuturesInstrumentIndex(t *testing.T) {
 }
 
 func TestGetFuturesInstrumentEstimatedPrice(t *testing.T) {
-	estimatedPrice, err := NewTestClient().GetFuturesInstrumentEstimatedPrice(InstrumentId)
+	instId := getFirstValidInstrumentId()
+	estimatedPrice, err := NewTestClient().GetFuturesInstrumentEstimatedPrice(instId)
 	if err != nil {
 		t.Error(err)
 	}
@@ -155,7 +166,9 @@ func TestGetFuturesInstrumentEstimatedPrice(t *testing.T) {
 }
 
 func TestGetFuturesInstrumentOpenInterest(t *testing.T) {
-	priceLimit, err := NewTestClient().GetFuturesInstrumentOpenInterest(InstrumentId)
+
+	instId := getFirstValidInstrumentId()
+	priceLimit, err := NewTestClient().GetFuturesInstrumentOpenInterest(instId)
 	if err != nil {
 		t.Error(err)
 	}
@@ -163,7 +176,9 @@ func TestGetFuturesInstrumentOpenInterest(t *testing.T) {
 }
 
 func TestGetFuturesInstrumentPriceLimit(t *testing.T) {
-	priceLimit, err := NewTestClient().GetFuturesInstrumentPriceLimit(InstrumentId)
+
+	instId := getFirstValidInstrumentId()
+	priceLimit, err := NewTestClient().GetFuturesInstrumentPriceLimit(instId)
 	if err != nil {
 		t.Error(err)
 	}
@@ -171,7 +186,7 @@ func TestGetFuturesInstrumentPriceLimit(t *testing.T) {
 }
 
 func TestGetFuturesInstrumentLiquidation(t *testing.T) {
-	InstrumentIdx := "EOS-USD-181228"
+	InstrumentIdx := getFirstValidInstrumentId()
 	status, from, to, limit := 1, 1, 0, 5
 	liquidation, err := NewTestClient().GetFuturesInstrumentLiquidation(InstrumentIdx, status, from, to, limit)
 	if err != nil {
@@ -184,46 +199,56 @@ func TestGetFuturesInstrumentLiquidation(t *testing.T) {
  Futures trade api's testing
 */
 func TestGetFuturesPositions(t *testing.T) {
-	position, err := NewTestClient().GetFuturesPositions()
+	positions, err := NewTestClient().GetFuturesPositions()
 	if err != nil {
 		t.Error(err)
 	}
-	if position.MarginMode == "crossed" {
-		FmtPrintln("Futures crossed position: ", position)
-	} else if position.MarginMode == "fixed" {
-		FmtPrintln("Futures fixed position: ", position)
-	} else {
-		FmtPrintln("Futures position failed: ", position)
-	}
+
+	fmt.Printf("postions: %+v\n", positions)
+	require.True(t, positions != nil, positions)
+	require.True(t, err == nil, err)
+
+	//if *position["m"] == "crossed" {
+	//	FmtPrintln("Futures crossed position: ", position)
+	//} else if position.MarginMode == "fixed" {
+	//	FmtPrintln("Futures fixed position: ", position)
+	//} else {
+	//	FmtPrintln("Futures position failed: ", position)
+	//}
 }
 
 func TestGetFuturesInstrumentPosition(t *testing.T) {
-	position, err := NewTestClient().GetFuturesInstrumentPosition(InstrumentId)
-	if err != nil {
-		t.Error(err)
-	}
-	if position.MarginMode == "crossed" {
-		FmtPrintln("Futures crossed position: ", position)
-	}
-	if position.MarginMode == "fixed" {
-		FmtPrintln("Futures fixed position: ", position)
-	} else {
-		FmtPrintln("Futures position failed: ", position)
-	}
+
+	instId := getFirstValidInstrumentId()
+
+	positions, err := NewTestClient().GetFuturesInstrumentPosition(instId)
+	fmt.Printf("postions: %+v\n", positions)
+	require.True(t, positions != nil, positions)
+	require.True(t, err == nil, err)
+
+	//if position.MarginMode == "crossed" {
+	//	FmtPrintln("Futures crossed position: ", position)
+	//}
+	//if position.MarginMode == "fixed" {
+	//	FmtPrintln("Futures fixed position: ", position)
+	//} else {
+	//	FmtPrintln("Futures position failed: ", position)
+	//}
 }
 
 func TestGetFuturesAccounts(t *testing.T) {
 	account, err := NewTestClient().GetFuturesAccounts()
-	if err != nil {
-		t.Error(err)
-	}
-	if account.MarginMode == "crossed" {
-		FmtPrintln("Futures crossed account: ", account)
-	} else if account.MarginMode == "fixed" {
-		FmtPrintln("Futures fixed account: ", account)
-	} else {
-		FmtPrintln("Futures account failed: ", account)
-	}
+
+	require.True(t, account != nil, account)
+	require.True(t, err == nil, err)
+
+	//if account.MarginMode == "crossed" {
+	//	FmtPrintln("Futures crossed account: ", account)
+	//} else if account.MarginMode == "fixed" {
+	//	FmtPrintln("Futures fixed account: ", account)
+	//} else {
+	//	FmtPrintln("Futures account failed: ", account)
+	//}
 }
 
 func TestGetFuturesAccountsByCurrency(t *testing.T) {
@@ -235,16 +260,21 @@ func TestGetFuturesAccountsByCurrency(t *testing.T) {
 }
 
 func TestGetFuturesAccountsLedgerByCurrency(t *testing.T) {
-	from, to, limit := 1, 0, 2
-	ledger, err := NewTestClient().GetFuturesAccountsLedgerByCurrency(currency, from, to, limit)
-	if err != nil {
-		t.Error(err)
-	}
+	optionalParams := map[string]string{}
+	//optionalParams["before"] = "100000"
+	//optionalParams["after"] = "0"
+	optionalParams["limit"] = "10"
+
+	ledger, err := NewTestClient().GetFuturesAccountsLedgerByCurrency(currency, optionalParams)
 	FmtPrintln("Futures currency ledger: ", ledger)
+	require.True(t, ledger != nil, ledger)
+	require.True(t, err == nil, err)
 }
 
 func TestGetFuturesAccountsHoldsByInstrumentId(t *testing.T) {
-	holds, err := NewTestClient().GetFuturesAccountsHoldsByInstrumentId(InstrumentId)
+
+	instId := getValidFutureInstrumentId()
+	holds, err := NewTestClient().GetFuturesAccountsHoldsByInstrumentId(instId)
 	if err != nil {
 		t.Error(err)
 	}
@@ -252,60 +282,63 @@ func TestGetFuturesAccountsHoldsByInstrumentId(t *testing.T) {
 }
 
 func TestFuturesOrder(t *testing.T) {
-	var newOrderParams FuturesNewOrderParams
-	newOrderParams.ClientOid = "od12345678"
-	newOrderParams.InstrumentId = InstrumentId
-	newOrderParams.Type = IntToString(OPEN_SHORT)
-	newOrderParams.Price = "100000.00"
-	newOrderParams.Size = "1"
-	newOrderParams.MatchPrice = "0"
-	newOrderParams.Leverage = "20"
-
-	result, err := NewTestClient().FuturesOrder(newOrderParams)
+	clientOid := "od12345678"
+	instId := getValidFutureInstrumentId()
+	result, err := NewTestClient().GetFuturesOrder(instId, clientOid)
 	if err != nil {
 		t.Error(err)
 	}
 	FmtPrintln("Futures new order: ", result)
 }
 
-func TestFuturesOrders(t *testing.T) {
-	var batchNewOrder FuturesBatchNewOrderParams
-	batchNewOrder.InstrumentId = InstrumentId
-	batchNewOrder.Leverage = "20"
-	var ordersData [5]FuturesBatchNewOrderItem
-	for i, loop := 1, 6; i < loop; i++ {
-		var item FuturesBatchNewOrderItem
-		item.ClientOid = "od" + IntToString(12345670+i)
-		item.Type = IntToString(OPEN_SHORT)
-		item.Price = IntToString(100000 + i)
-		item.Size = "1"
-		item.MatchPrice = "0"
-		ordersData[i-1] = item
-	}
-	json, err := Struct2JsonString(ordersData)
-	if err != nil {
-		t.Error(err)
-	}
-	batchNewOrder.OrdersData = json
-	result, err := NewTestClient().FuturesOrders(batchNewOrder)
-	if err != nil {
-		t.Error(err)
-	}
-	FmtPrintln("Futures new orders: ", result)
-}
+//func TestFuturesOrders(t *testing.T) {
+//	var batchNewOrder FuturesBatchNewOrderParams
+//	batchNewOrder.InstrumentId = InstrumentId
+//	batchNewOrder.Leverage = "20"
+//	var ordersData [5]FuturesBatchNewOrderItem
+//	for i, loop := 1, 6; i < loop; i++ {
+//		var item FuturesBatchNewOrderItem
+//		item.ClientOid = "od" + IntToString(12345670+i)
+//		item.Type = IntToString(OPEN_SHORT)
+//		item.Price = IntToString(100000 + i)
+//		item.Size = "1"
+//		item.MatchPrice = "0"
+//		ordersData[i-1] = item
+//	}
+//	json, err := Struct2JsonString(ordersData)
+//	if err != nil {
+//		t.Error(err)
+//	}
+//	batchNewOrder.OrdersData = json
+//	result, err := NewTestClient().FuturesOrders(batchNewOrder)
+//	if err != nil {
+//		t.Error(err)
+//	}
+//	FmtPrintln("Futures new orders: ", result)
+//}
 
 func TestGetFuturesOrders(t *testing.T) {
-	status, from, to, limit := 0, 1, 0, 5
-	orderList, err := NewTestClient().GetFuturesOrders(InstrumentId, status, from, to, limit)
+	state := "6"
+	optionals := map[string]string{}
+	//optionals["before"] = "100000"
+	//optionals["after"] = "0"
+	optionals["limit"] = "10"
+
+	instId := getValidFutureInstrumentId()
+	orderList, err := NewTestClient().GetFuturesOrders(instId, state, optionals)
 	if err != nil {
 		t.Error(err)
 	}
 	FmtPrintln("Futures Instrument order list: ", orderList)
+	require.True(t, orderList != nil, orderList)
+	require.True(t, err == nil, err)
+
 }
 
 func TestGetFuturesOrder(t *testing.T) {
-	orderId := int64(1713584667466752)
-	order, err := NewTestClient().GetFuturesOrder(InstrumentId, orderId)
+	orderId := "1713584667466752"
+	instId := getValidFutureInstrumentId()
+	order, err := NewTestClient().GetFuturesOrder(instId, orderId)
 	if err != nil {
 		t.Error(err)
 	}
@@ -321,7 +354,9 @@ func TestBatchCancelFuturesInstrumentOrders(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	result, err := NewTestClient().BatchCancelFuturesInstrumentOrders(InstrumentId, json)
+
+	instId := getValidFutureInstrumentId()
+	result, err := NewTestClient().BatchCancelFuturesInstrumentOrders(instId, json)
 	if err != nil {
 		t.Error(err)
 	}
@@ -329,29 +364,32 @@ func TestBatchCancelFuturesInstrumentOrders(t *testing.T) {
 }
 
 func TestCancelFuturesInstrumentOrder(t *testing.T) {
-	orderId := int64(1713484063611904)
-	result, err := NewTestClient().CancelFuturesInstrumentOrder(InstrumentId, orderId)
-	if err != nil {
-		t.Error(err)
-	}
+	orderId := "1713484063611904"
+	instId := getValidFutureInstrumentId()
+
+	result, err := NewTestClient().CancelFuturesInstrumentOrder(instId, orderId)
+	require.True(t, err == nil, err)
 	FmtPrintln("Futures Instrument cancel order: ", result)
 }
 
 func TestGetFuturesFills(t *testing.T) {
-	orderId := int64(1713584667466752)
-	from, to, limit := 1, 0, 5
-	optionals := map[string]int{}
+	orderId := "1713584667466752"
+	from, to, limit := "1", "0", "5"
+	optionals := map[string]string{}
 	optionals["from"] = from
 	optionals["to"] = to
 	optionals["limit"] = limit
-	result, err := NewTestClient().GetFuturesFills(InstrumentId, orderId, optionals)
+
+	instId := getValidFutureInstrumentId()
+
+	result, err := NewTestClient().GetFuturesFills(instId, orderId, optionals)
 	if err != nil {
 		t.Error(err)
 	}
 	FmtPrintln("Futures Instrument fills: ", result)
 }
 
-func getValidInstrumentId() string {
+func getValidFutureInstrumentId() string {
 	c := NewTestClient()
 	insList, err := c.GetFuturesInstruments()
 	if err == nil {
@@ -362,7 +400,7 @@ func getValidInstrumentId() string {
 }
 
 func TestGetInstrumentMarkPrice(t *testing.T) {
-	insId := getValidInstrumentId()
+	insId := getValidFutureInstrumentId()
 	r, e := NewTestClient().GetInstrumentMarkPrice(insId)
 	simpleAssertTrue(r, e, t, false)
 	assert.True(t, r.Code == 0)
@@ -381,13 +419,38 @@ func TestFuturesAccountsLeverage(t *testing.T) {
 	// 		a. Not satisfying position or order requirements.
 	//		b. Invalid Authority
 	// Post C1. Full Position
-	r, e = c.PostFuturesAccountsLeverage(currency, 10, nil)
-	simpleAssertTrue(r, e, t, false)
+	//
+	// lingting.fu 20190826. 全仓服务端不再支持
+	//r, e = c.PostFuturesAccountsLeverage(currency, "10", nil)
+	//simpleAssertTrue(r, e, t, false)
 
 	// Post C2. One Position
 	params := NewParams()
-	params["instrument_id"] = getValidInstrumentId()
+	params["instrument_id"] = getValidFutureInstrumentId()
 	params["direction"] = "long"
-	r, e = c.PostFuturesAccountsLeverage(currency, 10, params)
+	r, e = c.PostFuturesAccountsLeverage(currency, "10", params)
 	simpleAssertTrue(r, e, t, false)
+}
+
+// lingting.fu@okcoin.com
+// The following requests might not success becoz of risk and considered as "Bad Request"
+func TestPostFuturesAPI(t *testing.T) {
+	c := NewTestClient()
+	r, _ := c.PostFutureAccountsLiquiMode("btc", "tier")
+	fmt.Printf("%+v \n", r)
+
+	r, _ = c.PostFutureAccountsMarginMode("btc", "crossed")
+	fmt.Printf("%+v \n", r)
+
+	validInstId := getValidFutureInstrumentId()
+	r, _ = c.PostFuturesOrder(validInstId, "1", "1.1", "1", nil)
+	fmt.Printf("%+v \n", r)
+
+	orderDatas := []map[string]string{
+		map[string]string{"order_type": "0", "price": "5", "size": "2", "type": "1", "match_price": "1"},
+		map[string]string{"order_type": "0", "price": "2", "size": "3", "type": "1", "match_price": "1"},
+	}
+
+	r, _ = c.PostFuturesOrders(validInstId, orderDatas, "20", nil)
+	fmt.Printf("%+v \n", r)
 }

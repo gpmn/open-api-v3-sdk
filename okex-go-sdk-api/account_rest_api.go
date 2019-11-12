@@ -175,8 +175,8 @@ GET /api/account/v3/ledger
 请求示例
 GET /api/account/v3/ledger?type=2&currency=btc&from=4&limit=10
 */
-func (client *Client) GetAccountLeger(optionalParams *map[string]string) (*[]map[string]interface{}, error) {
-	r := []map[string]interface{}{}
+func (client *Client) GetAccountLeger(optionalParams *map[string]string) (*[]map[string]string, error) {
+	r := []map[string]string{}
 	uri := ACCOUNT_LEDGER
 	if optionalParams != nil && len(*optionalParams) > 0 {
 		uri = BuildParams(uri, *optionalParams)
@@ -196,7 +196,7 @@ HTTP请求
 POST /api/account/v3/withdrawal
 */
 func (client *Client) PostAccountWithdrawal(
-	currency, to_address, trade_pwd string, destination int32, amount, fee float32) (*map[string]interface{}, error) {
+	currency, to_address, trade_pwd string, destination string, amount, fee string) (*map[string]interface{}, error) {
 
 	r := map[string]interface{}{}
 
@@ -208,7 +208,7 @@ func (client *Client) PostAccountWithdrawal(
 	withdrawlInfo["to_address"] = to_address
 	withdrawlInfo["trade_pwd"] = trade_pwd
 
-	if _, err := client.Request(GET, ACCOUNT_WITHRAWAL, withdrawlInfo, &r); err != nil {
+	if _, err := client.Request(POST, ACCOUNT_WITHRAWAL, withdrawlInfo, &r); err != nil {
 		return nil, err
 	}
 
@@ -224,7 +224,7 @@ HTTP请求
 POST /api/account/v3/transfer
 */
 func (client *Client) PostAccountTransfer(
-	currency string, from, to int32, amount float32, optionalParams *map[string]interface{}) (*map[string]interface{}, error) {
+	currency string, from, to string, amount string, optionalParams *map[string]string) (*map[string]interface{}, error) {
 
 	r := map[string]interface{}{}
 
@@ -232,14 +232,15 @@ func (client *Client) PostAccountTransfer(
 	transferInfo["amount"] = amount
 	transferInfo["from"] = from
 	transferInfo["to"] = to
-	transferInfo["amount"] = amount
+	transferInfo["currency"] = currency
 
 	if optionalParams != nil && len(*optionalParams) > 0 {
 		transferInfo["sub_account"] = (*optionalParams)["sub_account"]
 		transferInfo["instrument_id"] = (*optionalParams)["instrument_id"]
+		transferInfo["to_instrument_id"] = (*optionalParams)["to_instrument_id"]
 	}
 
-	if _, err := client.Request(GET, ACCOUNT_TRANSFER, transferInfo, &r); err != nil {
+	if _, err := client.Request(POST, ACCOUNT_TRANSFER, transferInfo, &r); err != nil {
 		return nil, err
 	}
 

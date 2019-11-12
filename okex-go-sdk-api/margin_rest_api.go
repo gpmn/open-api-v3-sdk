@@ -29,8 +29,8 @@ func (client *Client) GetMarginAccounts() (*[]map[string]interface{}, error) {
 HTTP请求
 GET /api/margin/v3/accounts/<instrument_id>
 */
-func (client *Client) GetMarginAccountsByInstrument(instrumentId string) (*[]map[string]interface{}, error) {
-	r := []map[string]interface{}{}
+func (client *Client) GetMarginAccountsByInstrument(instrumentId string) (*map[string]interface{}, error) {
+	r := map[string]interface{}{}
 
 	uri := GetInstrumentIdUri(MARGIN_ACCOUNTS_INSTRUMENT, instrumentId)
 	if _, err := client.Request(GET, uri, nil, &r); err != nil {
@@ -147,10 +147,11 @@ func (client *Client) GetMarginAccountsBorrowedByInstrumentId(instrumentId strin
 HTTP请求
 GET /api/margin/v3/orders
 */
-func (client *Client) GetMarginOrders(instrumentId string, optionalParams *map[string]string) (*[]map[string]interface{}, error) {
+func (client *Client) GetMarginOrders(instrumentId, state string, optionalParams *map[string]string) (*[]map[string]interface{}, error) {
 	r := []map[string]interface{}{}
 	fullParams := NewParams()
 	fullParams["instrument_id"] = instrumentId
+	fullParams["state"] = state
 
 	if optionalParams != nil && len(*optionalParams) > 0 {
 		for k, v := range *optionalParams {
@@ -176,9 +177,9 @@ GET /api/margin/v3/orders/<order_id>
 或者
 GET /api/margin/v3/orders/<client_oid>
 */
-func (client *Client) GetMarginOrdersById(instrumentId, orderOrClientId string) (*map[string]interface{}, error) {
+func (client *Client) GetMarginOrdersById(instrumentId, orderOrClientId string) (*map[string]string, error) {
 
-	r := map[string]interface{}{}
+	r := map[string]string{}
 	uri := strings.Replace(MARGIN_ORDERS_BY_ID, "{order_client_id}", orderOrClientId, -1)
 
 	fullParams := NewParams()
@@ -200,13 +201,21 @@ func (client *Client) GetMarginOrdersById(instrumentId, orderOrClientId string) 
 HTTP请求
 GET /api/margin/v3/orders_pending
 */
-func (client *Client) GetMarginOrdersPending(optionalParams *map[string]string) (*[]map[string]interface{}, error) {
+func (client *Client) GetMarginOrdersPending(instrumentId string, optionalParams *map[string]string) (*[]map[string]interface{}, error) {
 	r := []map[string]interface{}{}
 
-	uri := MARGIN_ORDERS_PENDING
+	fullParams := NewParams()
+	fullParams["instrument_id"] = instrumentId
+
 	if optionalParams != nil && len(*optionalParams) > 0 {
-		uri = BuildParams(uri, *optionalParams)
+		for k, v := range *optionalParams {
+			if v != "" && len(v) > 0 {
+				fullParams[k] = v
+			}
+		}
 	}
+
+	uri := BuildParams(MARGIN_ORDERS_PENDING, fullParams)
 
 	if _, err := client.Request(GET, uri, nil, &r); err != nil {
 		return nil, err
@@ -302,17 +311,18 @@ OKEx API提供limit和market两种下单模式。只有当您的账户有足够�
 HTTP请求
 POST /api/margin/v3/orders
 */
-func (client *Client) PostMarginOrders(side, instrument_id string, optionalOrderInfo *map[string]string) (*map[string]interface{}, error) {
+func (client *Client) PostMarginOrders(side, instrument_id, margin_trading string, optionalOrderInfo *map[string]string) (*map[string]interface{}, error) {
 	r := map[string]interface{}{}
 
 	postParams := NewParams()
 	postParams["side"] = side
 	postParams["instrument_id"] = instrument_id
+	postParams["margin_trading"] = margin_trading
 
 	if optionalOrderInfo != nil && len(*optionalOrderInfo) > 0 {
 		postParams["client_oid"] = (*optionalOrderInfo)["client_oid"]
 		postParams["type"] = (*optionalOrderInfo)["type"]
-		postParams["margin_trading"] = (*optionalOrderInfo)["margin_trading"]
+		postParams["order_type"] = (*optionalOrderInfo)["order_type"]
 
 		if postParams["type"] == "limit" {
 			postParams["price"] = (*optionalOrderInfo)["price"]

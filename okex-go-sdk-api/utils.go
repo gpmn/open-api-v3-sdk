@@ -369,8 +369,8 @@ func GetCurrencyUri(uri, currency string) string {
 	return strings.Replace(uri, "{currency}", currency, -1)
 }
 
-func GetInstrumentIdOrdersUri(uri, instrumentId string, orderId int64) string {
+func GetInstrumentIdOrdersUri(uri, instrumentId string, order_client_id string) string {
 	uri = strings.Replace(uri, "{instrument_id}", instrumentId, -1)
-	uri = strings.Replace(uri, "{order_id}", Int64ToString(orderId), -1)
+	uri = strings.Replace(uri, "{order_client_id}", order_client_id, -1)
 	return uri
 }

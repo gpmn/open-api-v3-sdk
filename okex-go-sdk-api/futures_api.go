@@ -1,7 +1,6 @@
 package okex
 
 import (
-	"log"
 	"net/http"
 	"strings"
 )
@@ -86,15 +85,6 @@ func (client *Client) GetFuturesInstrumentTicker(InstrumentId string) (FuturesIn
 }
 
 /*
- Get the futures contract Instrument trades
-*/
-func (client *Client) GetFuturesInstrumentTrades(InstrumentId string) ([]FuturesInstrumentTradesResult, error) {
-	var trades []FuturesInstrumentTradesResult
-	_, err := client.Request(GET, GetInstrumentIdUri(FUTURES_INSTRUMENT_TRADES, InstrumentId), nil, &trades)
-	return trades, err
-}
-
-/*
  Get the futures contract Instrument candles
  granularity: @see  file: futures_constants.go
 */
@@ -172,30 +162,24 @@ func (client *Client) GetFuturesInstrumentLiquidation(InstrumentId string, statu
 */
 
 /*
- Get all of futures contract position list.
- return struct: FuturesPositions
-*/
-func (client *Client) GetFuturesPositions() (FuturesPosition, error) {
-	response, err := client.Request(GET, FUTURES_POSITION, nil, nil)
-	return parsePositions(response, err)
-}
+单个合约持仓信息
+获取某个合约的持仓信息。
 
-/*
- Get all of futures contract position list.
- return struct: FuturesPositions
-*/
-func (client *Client) GetFuturesInstrumentPosition(InstrumentId string) (FuturesPosition, error) {
-	response, err := client.Request(GET, GetInstrumentIdUri(FUTURES_INSTRUMENT_POSITION, InstrumentId), nil, nil)
-	return parsePositions(response, err)
-}
+限速规则：20次/2s
+HTTP请求
+GET /api/futures/v3/<instrument_id>/position
 
-/*
- Get all of futures contract account list
- return struct: FuturesAccounts
+请求示例
+GET/api/futures/v3/ BTC-USD-180309 /position
 */
-func (client *Client) GetFuturesAccounts() (FuturesAccount, error) {
-	response, err := client.Request(GET, FUTURES_ACCOUNTS, nil, nil)
-	return parseAccounts(response, err)
+func (client *Client) GetFuturesInstrumentPosition(InstrumentId string) (*map[string]interface{}, error) {
+	r := map[string]interface{}{}
+	_, err := client.Request(GET, GetInstrumentIdUri(FUTURES_INSTRUMENT_POSITION, InstrumentId), nil, &r)
+	if err != nil {
+		return nil, err
+	} else {
+		return &r, nil
+	}
 }
 
 /*
@@ -208,20 +192,6 @@ func (client *Client) GetFuturesAccountsByCurrency(currency string) (FuturesCurr
 }
 
 /*
- Get the futures contract currency ledger
-*/
-func (client *Client) GetFuturesAccountsLedgerByCurrency(currency string, from, to, limit int) ([]FuturesCurrencyLedger, error) {
-	var ledger []FuturesCurrencyLedger
-	params := NewParams()
-	params["from"] = Int2String(from)
-	params["to"] = Int2String(to)
-	params["limit"] = Int2String(limit)
-	requestPath := BuildParams(GetCurrencyUri(FUTURES_ACCOUNT_CURRENCY_LEDGER, currency), params)
-	_, err := client.Request(GET, requestPath, nil, &ledger)
-	return ledger, err
-}
-
-/*
  Get the futures contract Instrument holds
 */
 func (client *Client) GetFuturesAccountsHoldsByInstrumentId(InstrumentId string) (FuturesAccountsHolds, error) {
@@ -231,43 +201,55 @@ func (client *Client) GetFuturesAccountsHoldsByInstrumentId(InstrumentId string)
 }
 
 /*
- Create a new order
+
+下单
+OKEx合约交易提供了限价单下单模式。只有当您的账户有足够的资金才能下单。一旦下单，您的账户资金将在订单生命周期内被冻结。被冻结的资金以及数量取决于订单指定的类型和参数。
+
+限速规则：40次/2s
+HTTP请求
+POST /api/futures/v3/order
+
+请求示例
+POST/api/futures/v3/order
+{"client_oid": “12233456”,"order_type”:”1”,"instrument_id":"BTC-USD-180213","type":"1","price":"432.11","size":"2","match_price":"0","leverage":"10"}
+
 */
-func (client *Client) FuturesOrder(newOrderParams FuturesNewOrderParams) (FuturesNewOrderResult, error) {
-	var newOrderResult FuturesNewOrderResult
-	_, err := client.Request(POST, FUTURES_ORDER, newOrderParams, &newOrderResult)
-	return newOrderResult, err
+func (client *Client) PostFuturesOrder(instrumentId, oType, price, size string, optionalParams map[string]string) (*map[string]interface{}, error) {
+	r := map[string]interface{}{}
+
+	params := NewParams()
+	params["instrument_id"] = instrumentId
+	params["type"] = oType
+	params["price"] = price
+	params["size"] = size
+
+	if optionalParams != nil && len(optionalParams) > 0 {
+		for k, v := range optionalParams {
+			params[k] = v
+		}
+	}
+
+	_, err := client.Request(POST, FUTURES_ORDER, params, &r)
+	return &r, err
 }
 
 /*
- Batch create new order.(Max of 5 orders are allowed per request)
-*/
-func (client *Client) FuturesOrders(batchNewOrder FuturesBatchNewOrderParams) (FuturesBatchNewOrderResult, error) {
-	var batchNewOrderResult FuturesBatchNewOrderResult
-	_, err := client.Request(POST, FUTURES_ORDERS, batchNewOrder, &batchNewOrderResult)
-	return batchNewOrderResult, err
-}
+获取订单信息
+通过订单ID获取单个订单信息。已撤销的未成交单只保留2个小时。
 
-/*
- Get all of futures contract order list
+限速规则：40次/2s
+HTTP请求
+GET /api/futures/v3/orders/<instrument_id>/<order_id>
+or
+GET /api/futures/v3/orders/<instrument_id>/<client_oid>
+请求示例
+GET/api/futures/v3/orders/BTC-USD-180213/888845120785408
+or
+GET/api/futures/v3/orders/BTC-USD-180213/888845120785408ee
 */
-func (client *Client) GetFuturesOrders(InstrumentId string, params map[string]string) (FuturesGetOrdersResult, error) {
-	var ordersResult FuturesGetOrdersResult
-	// params["status"] = Int2String(status)
-	// params["from"] = Int2String(from)
-	// params["to"] = Int2String(to)
-	// params["limit"] = Int2String(limit)
-	requestPath := BuildParams(GetInstrumentIdUri(FUTURES_INSTRUMENT_ORDER_LIST, InstrumentId), params)
-	_, err := client.Request(GET, requestPath, nil, &ordersResult)
-	return ordersResult, err
-}
-
-/*
- Get all of futures contract a order by order id
-*/
-func (client *Client) GetFuturesOrder(InstrumentId string, orderId int64) (FuturesGetOrderResult, error) {
-	var getOrderResult FuturesGetOrderResult
-	_, err := client.Request(GET, GetInstrumentIdOrdersUri(FUTURES_INSTRUMENT_ORDER_INFO, InstrumentId, orderId), nil, &getOrderResult)
+func (client *Client) GetFuturesOrder(InstrumentId string, orderid_or_clientoId string) (map[string]string, error) {
+	var getOrderResult map[string]string
+	_, err := client.Request(GET, GetInstrumentIdOrdersUri(FUTURES_INSTRUMENT_ORDER_INFO, InstrumentId, orderid_or_clientoId), nil, &getOrderResult)
 	return getOrderResult, err
 }
 
@@ -283,33 +265,24 @@ func (client *Client) BatchCancelFuturesInstrumentOrders(InstrumentId, orderIds 
 }
 
 /*
- Cancel the order
+ 撤销指定订单
+撤销之前下的未完成订单。
+限速规则：40次/2s
+HTTP请求
+POST /api/futures/v3/cancel_order/<instrument_id>/<order_id>
+or
+POST /api/futures/v3/cancel_order/<instrument_id>/<client_oid>
+
+请求示例
+POST /api/futures/v3/cancel_order/BTC-USD-180309/1407616797780992
+or
+POST /api/futures/v3/cancel_order/BTC-USD-180309/1407616797780992ee
 */
-func (client *Client) CancelFuturesInstrumentOrder(InstrumentId string, orderId int64) (FuturesCancelInstrumentOrderResult, error) {
-	var cancelInstrumentOrderResult FuturesCancelInstrumentOrderResult
-	_, err := client.Request(POST, GetInstrumentIdOrdersUri(FUTURES_INSTRUMENT_ORDER_CANCEL, InstrumentId, orderId), nil,
+func (client *Client) CancelFuturesInstrumentOrder(InstrumentId string, orderid_or_clientoId string) (map[string]interface{}, error) {
+	var cancelInstrumentOrderResult map[string]interface{}
+	_, err := client.Request(POST, GetInstrumentIdOrdersUri(FUTURES_INSTRUMENT_ORDER_CANCEL, InstrumentId, orderid_or_clientoId), nil,
 		&cancelInstrumentOrderResult)
 	return cancelInstrumentOrderResult, err
-}
-
-/*
- Get all of futures contract transactions.
-*/
-func (client *Client) GetFuturesFills(InstrumentId string, orderId int64, optionalParams map[string]int) ([]FuturesFillResult, error) {
-	var fillsResult []FuturesFillResult
-	params := NewParams()
-	params["order_id"] = Int64ToString(orderId)
-	params["instrument_id"] = InstrumentId
-
-	if optionalParams != nil && len(optionalParams) > 0 {
-		params["from"] = Int2String(optionalParams["from"])
-		params["to"] = Int2String(optionalParams["to"])
-		params["limit"] = Int2String(optionalParams["limit"])
-	}
-
-	requestPath := BuildParams(FUTURES_FILLS, params)
-	_, err := client.Request(GET, requestPath, nil, &fillsResult)
-	return fillsResult, err
 }
 
 /*
@@ -326,88 +299,80 @@ func (c *Client) GetInstrumentMarkPrice(instrumentId string) (*FuturesMarkdown, 
 	return &r, err
 }
 
-func parsePositions(response *http.Response, err error) (FuturesPosition, error) {
-	var position FuturesPosition
-	if err != nil {
-		return position, err
-	}
-	var result Result
-	result.Result = false
-	jsonString := GetResponseDataJsonString(response)
-	log.Printf("parsePositions - %s", jsonString)
-	if strings.Contains(jsonString, "\"margin_mode\":\"fixed\"") {
-		var fixedPosition FuturesFixedPosition
-		err = JsonString2Struct(jsonString, &fixedPosition)
-		if err != nil {
-			return position, err
-		} else {
-			position.Result = fixedPosition.Result
-			position.MarginMode = "fixed"
-			position.FixedPosition = fixedPosition.FixedPosition
-		}
-	} else if strings.Contains(jsonString, "\"margin_mode\":\"crossed\"") {
-		var crossPosition FuturesCrossPosition
-		err = JsonString2Struct(jsonString, &crossPosition)
-		if err != nil {
-			return position, err
-		} else {
-			position.Result = crossPosition.Result
-			position.MarginMode = "crossed"
-			for i := range crossPosition.CrossPosition {
-				lv0 := crossPosition.CrossPosition[i]
-				for j := range lv0 {
-					lv1 := &lv0[j]
-					position.CrossPosition = append(position.CrossPosition, *lv1)
-				}
-			}
-		}
-	} else if strings.Contains(jsonString, "\"code\":") {
-		JsonString2Struct(jsonString, &position)
-		position.Result = result
-	} else {
-		position.Result = result
-	}
-
-	return position, nil
-}
-
-func parseAccounts(response *http.Response, err error) (FuturesAccount, error) {
-	var account FuturesAccount
-	if err != nil {
-		return account, err
-	}
-	var result Result
-	result.Result = false
-	jsonString := GetResponseDataJsonString(response)
-	log.Printf("parseAccounts - %s", jsonString)
-	if strings.Contains(jsonString, "\"contracts\"") {
-		var fixedAccount FuturesFixedAccountInfo
-		err = JsonString2Struct(jsonString, &fixedAccount)
-		if err != nil {
-			return account, err
-		} else {
-			account.Result = fixedAccount.Result
-			account.FixedAccount = fixedAccount.Info
-			account.MarginMode = "fixed"
-		}
-	} else if strings.Contains(jsonString, "\"realized_pnl\"") {
-		var crossAccount FuturesCrossAccountInfo
-		err = JsonString2Struct(jsonString, &crossAccount)
-		if err != nil {
-			return account, err
-		} else {
-			account.Result = crossAccount.Result
-			account.MarginMode = "crossed"
-			account.CrossAccount = crossAccount.Info
-		}
-	} else if strings.Contains(jsonString, "\"code\":") {
-		JsonString2Struct(jsonString, &account)
-		account.Result = result
-	} else {
-		account.Result = result
-	}
-	return account, nil
-}
+//func parsePositions(response *http.Response, err error) (FuturesPosition, error) {
+//	var position FuturesPosition
+//	if err != nil {
+//		return position, err
+//	}
+//	var result Result
+//	result.Result = false
+//	jsonString := GetResponseDataJsonString(response)
+//	if strings.Contains(jsonString, "\"margin_mode\":\"fixed\"") {
+//		var fixedPosition FuturesFixedPosition
+//		err = JsonString2Struct(jsonString, &fixedPosition)
+//		if err != nil {
+//			return position, err
+//		} else {
+//			position.Result = fixedPosition.Result
+//			position.MarginMode = fixedPosition.MarginMode
+//			position.FixedPosition = fixedPosition.FixedPosition
+//		}
+//	} else if strings.Contains(jsonString, "\"margin_mode\":\"crossed\"") {
+//		var crossPosition FuturesCrossPosition
+//		err = JsonString2Struct(jsonString, &crossPosition)
+//		if err != nil {
+//			return position, err
+//		} else {
+//			position.Result = crossPosition.Result
+//			position.MarginMode = crossPosition.MarginMode
+//			position.CrossPosition = crossPosition.CrossPosition
+//		}
+//	} else if strings.Contains(jsonString, "\"code\":") {
+//		JsonString2Struct(jsonString, &position)
+//		position.Result = result
+//	} else {
+//		position.Result = result
+//	}
+//
+//	return position, nil
+//}
+//
+//func parseAccounts(response *http.Response, err error) (FuturesAccount, error) {
+//	var account FuturesAccount
+//	if err != nil {
+//		return account, err
+//	}
+//	var result Result
+//	result.Result = false
+//	jsonString := GetResponseDataJsonString(response)
+//	if strings.Contains(jsonString, "\"contracts\"") {
+//		var fixedAccount FuturesFixedAccountInfo
+//		err = JsonString2Struct(jsonString, &fixedAccount)
+//		if err != nil {
+//			return account, err
+//		} else {
+//			account.Result = fixedAccount.Result
+//			account.FixedAccount = fixedAccount.Info
+//			account.MarginMode = "fixed"
+//		}
+//	} else if strings.Contains(jsonString, "\"realized_pnl\"") {
+//		var crossAccount FuturesCrossAccountInfo
+//		err = JsonString2Struct(jsonString, &crossAccount)
+//		if err != nil {
+//			return account, err
+//		} else {
+//			account.Result = crossAccount.Result
+//			account.MarginMode = "crossed"
+//			account.CrossAccount = crossAccount.Info
+//		}
+//	} else if strings.Contains(jsonString, "\"code\":") {
+//		JsonString2Struct(jsonString, &account)
+//		account.Result = result
+//	} else {
+//		account.Result = result
+//	}
+//	return account, nil
+//}
 
 func parseCurrencyAccounts(response *http.Response, err error) (FuturesCurrencyAccount, error) {
 	var currencyAccount FuturesCurrencyAccount
@@ -467,10 +432,10 @@ POST/api/futures/v3/accounts/btc/leverage{"leverage":"10"}（全仓示例）
 POST/api/futures/v3/accounts/btc/leverage{"instrument_id":"BTC-USD-180213","direction":"long","leverage":"10"}（逐仓示例）
 
 */
-func (c *Client) PostFuturesAccountsLeverage(currency string, leverage int, optionalParams map[string]string) (map[string]interface{}, error) {
+func (c *Client) PostFuturesAccountsLeverage(currency string, leverage string, optionalParams map[string]string) (map[string]interface{}, error) {
 	uri := GetCurrencyUri(FUTURES_ACCOUNT_CURRENCY_LEVERAGE, currency)
 	params := NewParams()
-	params["leverage"] = Int2String(leverage)
+	params["leverage"] = leverage
 
 	if optionalParams != nil && len(optionalParams) > 0 {
 		params["instrument_id"] = optionalParams["instrument_id"]
@@ -498,4 +463,259 @@ func (c *Client) GetFuturesAccountsLeverage(currency string) (map[string]interfa
 	r := new(map[string]interface{})
 	_, err := c.Request(GET, uri, nil, r)
 	return *r, err
+}
+
+/*
+设置合约币种强平模式
+设置合约币种强平模式，注意当前仓位有挂单禁止切换账户模式。
+限速规则：5次/2s
+
+HTTP请求
+POST /api/futures/v3/accounts/liqui_mode
+
+请求示例
+POST /api/futures/v3/accounts/liqui_mode {"currency":"btc","liqui_mode":"tier"}
+*/
+func (client *Client) PostFutureAccountsLiquiMode(
+	currency string, liqui_mode string) (*map[string]interface{}, error) {
+
+	r := map[string]interface{}{}
+
+	transferInfo := map[string]interface{}{}
+	transferInfo["liqui_mode"] = liqui_mode
+	transferInfo["currency"] = currency
+
+	if _, err := client.Request(POST, FUTURES_ACCOUNTS_LIQUI_MODE, transferInfo, &r); err != nil {
+		return nil, err
+	}
+
+	return &r, nil
+}
+
+/*
+交割合约增加：设置合约币种账户模式接口
+影响的业务线：交割合约
+影响的具体接口：POST /api/futures/v3/accounts/margin_mode
+设置合约币种账户模式，注意当前仓位有持仓或者挂单禁止切换账户模式。
+
+限速规则：5次/2s
+
+请求示例
+POST /api/futures/v3/accounts/margin_mode{"currency":"btc","margin_mode":"crossed"}
+
+*/
+func (client *Client) PostFutureAccountsMarginMode(
+	currency string, margin_mode string) (*map[string]interface{}, error) {
+
+	r := map[string]interface{}{}
+
+	transferInfo := map[string]interface{}{}
+	transferInfo["margin_mode"] = margin_mode
+	transferInfo["currency"] = currency
+
+	if _, err := client.Request(POST, FUTURES_ACCOUNTS_MARGIN_MODE, transferInfo, &r); err != nil {
+		return nil, err
+	}
+
+	return &r, nil
+}
+
+/*
+所有币种合约账户信息
+获取合约账户所有币种的账户信息。请求此接口，会在数据库遍历所有币对下的账户数据，有大量的性能消耗,请求频率较低。建议用户传币种获取账户信息信息。
+
+限速规则：1次/10s
+HTTP请求
+GET /api/futures/v3/accounts
+
+请求示例
+GET/api/futures/v3/accounts
+*/
+func (client *Client) GetFuturesAccounts() (*map[string]interface{}, error) {
+
+	r := map[string]interface{}{}
+	if _, err := client.Request(GET, FUTURES_ACCOUNTS, nil, &r); err != nil {
+		return nil, err
+	}
+
+	return &r, nil
+}
+
+/*
+获取成交明细
+获取最近的成交明细列表，本接口能查询最近7天的数据。
+
+限速规则：20 次/2s
+HTTP请求
+GET /api/futures/v3/fills
+
+请求示例
+GET/api/futures/v3/fills?order_id=123123&instrument_id=BTC-USD-180309&after=2517062044057601&limit=50
+*/
+func (client *Client) GetFuturesFills(InstrumentId string, orderId string, optionalParams map[string]string) ([]FuturesFillResult, error) {
+	var fillsResult []FuturesFillResult
+	params := NewParams()
+	params["order_id"] = orderId
+	params["instrument_id"] = InstrumentId
+
+	if optionalParams != nil && len(optionalParams) > 0 {
+		params["after"] = optionalParams["after"]
+		params["before"] = optionalParams["before"]
+		params["limit"] = optionalParams["limit"]
+	}
+
+	requestPath := BuildParams(FUTURES_FILLS, params)
+	_, err := client.Request(GET, requestPath, nil, &fillsResult)
+	return fillsResult, err
+}
+
+/*
+批量下单
+批量进行合约下单操作。每个币对可批量下10个单。
+
+限速规则：20次/2s
+HTTP请求
+POST /api/futures/v3/orders
+
+请求示例
+POST/api/futures/v3/orders
+{
+	"instrument_id":"ETH-USD-181228",
+	"leverage":20,
+	"orders_data":[
+			{"order_type”:”1”,"client_oid":"f379a96206fa4b778e1554c6dc969687","type":"1","price":"180.0","size":"1","match_price":"0"}
+	]
+}
+*/
+func (client *Client) PostFuturesOrders(instrumentId string, orderData []map[string]string, leverage string, optionalParams map[string]string) (*map[string]interface{}, error) {
+	var batchNewOrderResult map[string]interface{}
+	params := map[string]interface{}{}
+	params["orders_data"] = orderData
+	params["instrument_id"] = instrumentId
+	params["leverage"] = leverage
+
+	if optionalParams != nil && len(optionalParams) > 0 {
+		for k, v := range optionalParams {
+			if v != "" && len(v) > 0 {
+				params[k] = v
+			}
+		}
+	}
+
+	_, err := client.Request(POST, FUTURES_ORDERS, params, &batchNewOrderResult)
+	return &batchNewOrderResult, err
+}
+
+/*
+合约持仓信息
+获取合约账户所有币种的持仓信息。请求此接口，会在数据库遍历所有币对下的持仓数据，有大量的性能消耗,请求频率较低。建议用户传币种获取持仓信息。
+
+限速规则：5次/2s
+HTTP请求
+GET /api/futures/v3/position
+
+请求示例
+GET/api/futures/v3/position
+*/
+func (client *Client) GetFuturesPositions() (*map[string]interface{}, error) {
+
+	result := map[string]interface{}{}
+
+	_, err := client.Request(GET, FUTURES_POSITION, nil, &result)
+	if err != nil {
+		return nil, err
+	} else {
+		return &result, err
+	}
+}
+
+/*
+账单流水查询
+列出帐户资产流水。帐户资产流水是指导致帐户余额增加或减少的行为。本接口能查询最近2天的数据。
+
+限速规则：5次/2s
+HTTP请求
+GET /api/futures/v3/accounts/<currency>/ledger
+
+请求示例
+GET/api/futures/v3/accounts/eos/ledger?after=2510946217009854&limit=3
+*/
+func (client *Client) GetFuturesAccountsLedgerByCurrency(currency string, optionalParams map[string]string) ([]map[string]interface{}, error) {
+	var ledger []map[string]interface{}
+
+	var params map[string]string = nil
+	if optionalParams != nil && len(optionalParams) > 0 {
+		params = NewParams()
+		for k, v := range optionalParams {
+			if len(v) > 0 {
+				params[k] = v
+			}
+		}
+	}
+
+	requestPath := BuildParams(GetCurrencyUri(FUTURES_ACCOUNT_CURRENCY_LEDGER, currency), params)
+	_, err := client.Request(GET, requestPath, nil, &ledger)
+	return ledger, err
+}
+
+/*
+公共-获取成交数据
+获取合约最新的300条成交列表。
+
+限速规则：20次/2s
+HTTP请求
+GET /api/futures/v3/instruments/<instrument_id>/trades
+
+请求示例
+GET/api/futures/v3/instruments/BTC-USD-180309/trades?after=2517062044057601&limit=2
+*/
+func (client *Client) GetFuturesInstrumentTrades(InstrumentId string, optionalParams map[string]string) ([]interface{}, error) {
+	var trades []interface{}
+
+	params := NewParams()
+
+	if optionalParams != nil && len(optionalParams) > 0 {
+		for k, v := range optionalParams {
+			if len(v) > 0 {
+				params[k] = v
+			}
+		}
+	}
+
+	uri := BuildParams(GetInstrumentIdUri(FUTURES_INSTRUMENT_TRADES, InstrumentId), params)
+	_, err := client.Request(GET, uri, nil, &trades)
+	if err != nil {
+		return nil, err
+	} else {
+		return trades, err
+	}
+}
+
+/*
+ 获取订单列表
+列出您当前所有的订单信息（after的优先级高于before，当同时传after和before参数时，系统返回after参数的请求值）。本接口能查询最近7天的数据。
+
+限速规则：20次/2s
+HTTP请求
+GET /api/futures/v3/orders/<instrument_id>
+
+请求示例
+GET/api/futures/v3/orders/BTC-USD-190628?state=2&after=2517062044057601&limit=2
+*/
+func (client *Client) GetFuturesOrders(InstrumentId, state string, optionalParams map[string]string) (map[string]interface{}, error) {
+	var ordersResult map[string]interface{}
+	params := NewParams()
+	params["state"] = state
+
+	if optionalParams != nil && len(optionalParams) > 0 {
+		for k, v := range optionalParams {
+			if len(v) > 0 {
+				params[k] = v
+			}
+		}
+	}
+
+	requestPath := BuildParams(GetInstrumentIdUri(FUTURES_INSTRUMENT_ORDER_LIST, InstrumentId), params)
+	_, err := client.Request(GET, requestPath, nil, &ordersResult)
+	return ordersResult, err
 }

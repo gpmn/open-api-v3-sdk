@@ -99,7 +99,7 @@ type FuturesMarkdown struct {
 	BizWarmTips
 	InstrumentId string  `json:"instrument_id"`
 	Timestamp    string  `json:"timestamp"`
-	MarkPrice    float32 `json:"mark_price"`
+	MarkPrice    float32 `json:"mark_price,string"`
 }
 
 type FuturesFixedAccountInfo struct {

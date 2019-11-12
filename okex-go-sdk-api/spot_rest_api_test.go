@@ -2,8 +2,9 @@ package okex
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetSpotAccounts(t *testing.T) {
@@ -69,8 +70,8 @@ func TestGetSpotOrdersPending(t *testing.T) {
 	jstr, _ = Struct2JsonString(ac)
 	println(jstr)
 
-	testOrderId := (*ac)[0]["order_id"]
-	so, err := c.GetSpotOrdersById("BTC-USDT", testOrderId.(string))
+	testOrderId := ac[0].OrderID
+	so, err := c.GetSpotOrdersById("BTC-USDT", testOrderId)
 	assert.True(t, so != nil && err == nil)
 }
 

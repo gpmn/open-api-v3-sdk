@@ -317,7 +317,7 @@ type WSErrorResponse struct {
 }
 
 func (r *WSErrorResponse) Valid() bool {
-	return (len(r.Event) > 0 && len(r.Message) > 0 && r.ErrorCode >= 30000)
+	return len(r.Event) > 0 && len(r.Message) > 0 && r.ErrorCode >= 30000
 }
 
 func loadResponse(rspMsg []byte) (interface{}, error) {

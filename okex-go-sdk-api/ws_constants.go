@@ -10,8 +10,8 @@ package okex
 import "errors"
 
 const (
-	WS_API_HOST = "okexcomreal.bafang.com:10442"
-	WS_API_URL  = "wss://real.okex.com:10442/ws/v3"
+	WS_API_HOST = "okexcomreal.bafang.com:8443"
+	WS_API_URL  = "wss://real.okex.com:8443/ws/v3"
 
 	CHNL_FUTURES_TICKER          = "futures/ticker"          // 行情数据频道
 	CHNL_FUTURES_CANDLE60S       = "futures/candle60s"       // 1分钟k线数据频道

@@ -107,7 +107,7 @@ func TestGetAccountWalletByCurrency(t *testing.T) {
 func TestPostAccountWithdrawal(t *testing.T) {
 	c := NewTestClient()
 	ac, err := c.PostAccountWithdrawal("btc", "17DKe3kkkkiiiiTvAKKi2vMPbm1Bz3CMKw", "123456",
-		4, 1, 0.0005)
+		"4", "1", "0.0005")
 	assert.True(t, ac != nil && err == nil)
 	jstr, _ := Struct2JsonString(ac)
 	println(jstr)
@@ -116,7 +116,9 @@ func TestPostAccountWithdrawal(t *testing.T) {
 
 func TestPostAccountTransfer(t *testing.T) {
 	c := NewTestClient()
-	ac, err := c.PostAccountTransfer("eos", 6, 5, 0.0001, nil)
+	options := NewParams()
+	options["instrument_id"] = "okb-btc"
+	ac, err := c.PostAccountTransfer("okb", "6", "5", "0.0001", &options)
 	assert.True(t, ac != nil && err == nil)
 	jstr, _ := Struct2JsonString(ac)
 	println(jstr)

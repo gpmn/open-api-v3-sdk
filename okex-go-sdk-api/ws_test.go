@@ -9,10 +9,11 @@ package okex
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"hash/crc32"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestOKWSAgent_AllInOne(t *testing.T) {
@@ -20,10 +21,11 @@ func TestOKWSAgent_AllInOne(t *testing.T) {
 	config := GetDefaultConfig()
 
 	// Step1: Start agent.
-	agent.Start(config)
+	agent.Start(config, nil)
 
 	// Step2: Subscribe channel
 	// Step2.0: Subscribe public channel swap/ticker successfully.
+	agent.Subscribe(CHNL_SWAP_TICKER, "BTC-USD-SWAP", nil)
 	agent.Subscribe(CHNL_SWAP_TICKER, "BTC-USD-SWAP", DefaultDataCallBack)
 
 	// Step2.1: Subscribe private channel swap/position before login, so it would be a fail.
@@ -45,7 +47,7 @@ func TestOKWSAgent_AllInOne(t *testing.T) {
 	time.Sleep(120 * time.Second)
 
 	// Step7. Stop all the go routine run in background.
-	agent.Stop()
+	//agent.Stop()
 	time.Sleep(1 * time.Second)
 }
 
@@ -54,7 +56,7 @@ func TestOKWSAgent_Depths(t *testing.T) {
 	config := GetDefaultConfig()
 
 	// Step1: Start agent.
-	agent.Start(config)
+	agent.Start(config, nil)
 
 	// Step2: Subscribe channel
 	// Step2.0: Subscribe public channel swap/depths successfully.
@@ -67,7 +69,7 @@ func TestOKWSAgent_Depths(t *testing.T) {
 	time.Sleep(60 * time.Second)
 
 	// Step4. Stop all the go routine run in background.
-	agent.Stop()
+	//agent.Stop()
 	time.Sleep(1 * time.Second)
 }
 
@@ -88,7 +90,7 @@ func TestOKWSAgent_mergeDepths(t *testing.T) {
 		{"7300", "1", 0, 1},
 	}
 
-	m1, e1 := mergeDepths(oldDepths, newDepths1)
+	m1, e1 := mergeDepths(oldDepths, newDepths1, true)
 	assert.True(t, e1 == nil)
 	assert.True(t, len(*m1) == len(expectedMerged1) && (*m1)[0][1] == expectedMerged1[0][1] && (*m1)[0][1] == "32000")
 
@@ -100,7 +102,7 @@ func TestOKWSAgent_mergeDepths(t *testing.T) {
 		{"5088.59", "34000", 0, 1},
 		{"7300", "1", 0, 1},
 	}
-	m2, e2 := mergeDepths(oldDepths, newDepths2)
+	m2, e2 := mergeDepths(oldDepths, newDepths2, true)
 	assert.True(t, e2 == nil)
 	assert.True(t, len(*m2) == len(expectedMerged2) && (*m2)[0][1] == expectedMerged2[0][1] && (*m2)[0][1] == "34000")
 
@@ -116,7 +118,7 @@ func TestOKWSAgent_mergeDepths(t *testing.T) {
 		{"7300", "1", 0, 1},
 		{"7400", "1", 0, 1},
 	}
-	m3, e3 := mergeDepths(oldDepths, newDepths3)
+	m3, e3 := mergeDepths(oldDepths, newDepths3, true)
 	assert.True(t, e3 == nil)
 	assert.True(t, len(*m3) == len(expectedMerged3) && (*m3)[0][1] == expectedMerged3[0][1] && (*m3)[0][1] == "1")
 
@@ -168,7 +170,7 @@ func TestArray(t *testing.T) {
 	println(len(t2), r2)
 	println(len(t3), r3)
 
-	fmt.Printf("%+v", t1[0:len(t1)-1])
+	fmt.Printf("%+v\n", t1[0:len(t1)-1])
 }
 
 func TestCrc32(t *testing.T) {
@@ -228,7 +230,7 @@ func TestOKWSAgent_Futures_AllInOne(t *testing.T) {
 	filter := "BTC-USD-170310"
 
 	// Step1: Start agent.
-	agent.Start(config)
+	agent.Start(config, nil)
 
 	// Step2: Login
 	agent.Login(config.ApiKey, config.Passphrase)
@@ -250,7 +252,7 @@ func TestOKWSAgent_Futures_AllInOne(t *testing.T) {
 		agent.UnSubscribe(c, filter)
 	}
 
-	agent.Stop()
+	//agent.Stop()
 }
 
 func TestOKWSAgent_Spots_AllInOne(t *testing.T) {
@@ -279,7 +281,7 @@ func TestOKWSAgent_Spots_AllInOne(t *testing.T) {
 	filter := "ETH-USDT"
 
 	// Step1: Start agent.
-	agent.Start(config)
+	agent.Start(config, nil)
 
 	// Step2: Login
 	agent.Login(config.ApiKey, config.Passphrase)
@@ -301,5 +303,5 @@ func TestOKWSAgent_Spots_AllInOne(t *testing.T) {
 		agent.UnSubscribe(c, filter)
 	}
 
-	agent.Stop()
+	//agent.Stop()
 }
