@@ -131,10 +131,12 @@ func (client *Client) GetSpotOrdersPending(options *map[string]string) (orders [
 	fullOptions := NewParams()
 	uri := SPOT_ORDERS_PENDING
 	if options != nil && len(*options) > 0 {
-		fullOptions["instrument_id"] = (*options)["instrument_id"]
-		fullOptions["from"] = (*options)["from"]
-		fullOptions["to"] = (*options)["to"]
-		fullOptions["limit"] = (*options)["limit"]
+		if val, ok := (*options)["instrument_id"]; ok {
+			fullOptions["instrument_id"] = val
+		}
+		// fullOptions["from"] = (*options)["from"]
+		// fullOptions["to"] = (*options)["to"]
+		// fullOptions["limit"] = (*options)["limit"]
 		uri = BuildParams(SPOT_ORDERS_PENDING, fullOptions)
 	}
 

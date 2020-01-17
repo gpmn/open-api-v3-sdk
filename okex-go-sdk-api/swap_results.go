@@ -1,5 +1,7 @@
 package okex
 
+import "time"
+
 /*
  OKEX api result definition
  @author Lingting Fu
@@ -8,17 +10,17 @@ package okex
 */
 
 type SwapPositionHolding struct {
-	LiquidationPrice string `json:"liquidation_price"`
-	Position         string `json:"position"`
-	AvailPosition    string `json:"avail_position"`
-	AvgCost          string `json:"avg_cost"`
-	SettlementPrice  string `json:"settlement_price"`
-	InstrumentId     string `json:"instrument_id"`
-	Leverage         string `json:"leverage"`
-	RealizedPnl      string `json:"realized_pnl"`
-	Side             string `json:"side"`
-	Timestamp        string `json:"timestamp"`
-	Margin           string `json:"margin";default:""`
+	LiquidationPrice float64   `json:"liquidation_price,string"`
+	Position         float64   `json:"position,string"`
+	AvailPosition    float64   `json:"avail_position,string"`
+	AvgCost          float64   `json:"avg_cost,string"`
+	SettlementPrice  float64   `json:"settlement_price,string"`
+	InstrumentId     string    `json:"instrument_id"`
+	Leverage         float64   `json:"leverage,string"`
+	RealizedPnl      float64   `json:"realized_pnl,string"`
+	Side             string    `json:"side"`
+	Timestamp        time.Time `json:"timestamp"`
+	Margin           string    `json:"margin";default:""`
 }
 
 type SwapPosition struct {
@@ -30,17 +32,19 @@ type SwapPosition struct {
 type SwapPositionList []SwapPosition
 
 type SwapAccountInfo struct {
-	InstrumentId      string `json:"instrument_id"`
-	Timestamp         string `json:"timestamp"`
-	MarginFrozen      string `json:"margin_frozen"`
-	TotalAvailBalance string `json:"total_avail_balance"`
-	MarginRatio       string `json:"margin_ratio"`
-	RealizedPnl       string `json:"realized_pnl"`
-	UnrealizedPnl     string `json:"unrealized_pnl"`
-	FixedBalance      string `json:"fixed_balance"`
-	Equity            string `json:"equity"`
-	Margin            string `json:"margin"`
-	MarginMode        string `json:"margin_mode"`
+	Equity            float64   `json:"equity,string"`
+	FixedBalance      float64   `json:"fixed_balance,string"`
+	InstrumentId      string    `json:"instrument_id"`
+	MaintMarginRatio  string    `json:"maint_margin_ratio"`
+	Margin            float64   `json:"margin,string"`
+	MarginFrozen      float64   `json:"margin_frozen,string"`
+	MarginMode        string    `json:"margin_mode"`
+	MarginRatio       float64   `json:"margin_ratio,string"`
+	MaxWithdraw       float64   `json:"max_withdraw,string"`
+	RealizedPnl       float64   `json:"realized_pnl,string"`
+	Timestamp         time.Time `json:"timestamp,string"`
+	TotalAvailBalance float64   `json:"total_avail_balance,string"`
+	UnrealizedPnl     float64   `json:"unrealized_pnl,string"`
 }
 
 type SwapAccounts struct {
@@ -85,19 +89,19 @@ type SwapBatchCancelOrderResult struct {
 }
 
 type BaseOrderInfo struct {
-	InstrumentId string `json:"instrument_id"`
-	State        string `json:"state"`
-	OrderId      string `json:"order_id"`
-	Timestamp    string `json:"timestamp"`
-	Price        string `json:"price"`
-	PriceAvg     string `json:"price_avg"`
-	Size         string `json:"size"`
-	Fee          string `json:"fee"`
-	FilledQty    string `json:"filled_qty"`
-	ContractVal  string `json:"contract_val"`
-	Type         string `json:"type"`
-	OrderType    string `json:"order_type"`
-	ClientOid    string `json:"client_oid"`
+	InstrumentId string    `json:"instrument_id"`
+	State        string    `json:"state"`
+	OrderId      string    `json:"order_id"`
+	Timestamp    time.Time `json:"timestamp,string"`
+	Price        float64   `json:"price,string"`
+	PriceAvg     float64   `json:"price_avg,string"`
+	Size         float64   `json:"size,string"`
+	Fee          float64   `json:"fee,string"`
+	FilledQty    float64   `json:"filled_qty,string"`
+	ContractVal  float64   `json:"contract_val,string"`
+	Type         string    `json:"type"`
+	OrderType    string    `json:"order_type"`
+	ClientOid    string    `json:"client_oid"`
 }
 
 type SwapOrdersInfo struct {
@@ -162,12 +166,12 @@ type SwapInstrumentDepth struct {
 }
 
 type BaseTickerInfo struct {
-	InstrumentId string `json:"instrument_id"`
-	Last         string `json:"last"`
-	Timestamp    string `json:"timestamp"`
-	High24h      string `json:"high_24h"`
-	Volume24h    string `json:"volume_24h"`
-	Low24h       string `json:"low_24h"`
+	InstrumentId string    `json:"instrument_id"`
+	Last         float64   `json:"last,string"`
+	Timestamp    time.Time `json:"timestamp"`
+	High24h      float64   `json:"high_24h,string"`
+	Volume24h    float64   `json:"volume_24h,string"`
+	Low24h       float64   `json:"low_24h,string"`
 }
 
 type SwapTickerList []BaseTickerInfo
