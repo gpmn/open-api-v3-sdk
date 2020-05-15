@@ -1,8 +1,9 @@
 package okex
 
 import (
-	"github.com/pkg/errors"
+	"errors"
 	"reflect"
+	"fmt"
 )
 
 /*
@@ -38,7 +39,7 @@ func LoadPagingResult(r interface{}) (pr *PagingResult, e error) {
 
 	t := reflect.TypeOf(r)
 	if t.Kind() != reflect.Array && t.Kind() != reflect.Slice {
-		return nil, errors.Errorf("Incorrect data format, %+v", r)
+		return nil, fmt.Errorf("Incorrect data format, %+v", r)
 	}
 
 	r1 := r.([]interface{})
