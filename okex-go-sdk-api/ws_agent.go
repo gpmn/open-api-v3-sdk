@@ -63,7 +63,7 @@ func (a *OKWSAgent) Start(config *Config, startHook func() error) error { // 没
 			break
 		}
 		log.Printf("a.Start - dial to %s failed @ %d times:%+v", a.baseUrl, retry, err)
-		time.Sleep(3 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 	if err != nil {
 		log.Printf("a.Start - dial failed : %s", err.Error())
@@ -286,7 +286,7 @@ func (a *OKWSAgent) receive() {
 					break
 				}
 				log.Printf("a.receive : dial failed %d times :%+v", retry, err)
-				time.Sleep(3 * time.Second)
+				time.Sleep(10 * time.Second)
 			}
 			if nil != err {
 				log.Fatal("a.receive : dial failed, fatal error")
