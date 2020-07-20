@@ -47,19 +47,29 @@ type OKWSAgent struct {
 }
 
 func (a *OKWSAgent) Start(config *Config, startHook func() error) error { // 没有restart、stop的必要，删除stop和finize
-	a.baseUrl = config.WSEndpoint + "ws/v3?compress=true"
+	//a.baseUrl = config.WSEndpoint + "ws/v3?compress=true"
+	a.baseUrl = config.WSEndpoint + "?compress=true"
 	log.Printf("Connecting to %s", a.baseUrl)
 	//c, _, err := websocket.DefaultDialer.Dial(a.baseUrl, nil)
 	dialer := &websocket.Dialer{
 		Proxy:            http.ProxyFromEnvironment,
-		HandshakeTimeout: 20 * time.Second,
+		HandshakeTimeout: 30 * time.Second,
 	}
-	c, _, err := dialer.Dial(a.baseUrl, nil)
-
+	var c *websocket.Conn
+	var err error
+	for retry := 0; retry < 3; retry++ {
+		c, _, err = dialer.Dial(a.baseUrl, nil)
+		if nil == err {
+			break
+		}
+		log.Printf("a.Start - dial to %s failed @ %d times:%+v", a.baseUrl, retry, err)
+		time.Sleep(3 * time.Second)
+	}
 	if err != nil {
-		log.Fatalf("dial:%+v", err)
+		log.Printf("a.Start - dial failed : %s", err.Error())
 		return err
 	}
+
 	log.Printf("Connected to %s", a.baseUrl)
 	a.lastPongTm = time.Now().Add(2 * maxPongInterval)
 	a.conn = c
@@ -268,10 +278,18 @@ func (a *OKWSAgent) receive() {
 			a.connLock.Lock()
 			a.conn.Close()
 			a.connLock.Unlock()
-			conn, _, err := websocket.DefaultDialer.Dial(a.baseUrl, nil)
-			if err != nil {
-				log.Fatalf("a.receive : dial failed :%+v", err)
+			var conn *websocket.Conn
+			var err error
+			for retry := 0; retry < 3; retry++ {
+				conn, _, err = websocket.DefaultDialer.Dial(a.baseUrl, nil)
+				if nil == err {
+					break
+				}
+				log.Printf("a.receive : dial failed %d times :%+v", retry, err)
 				time.Sleep(3 * time.Second)
+			}
+			if nil != err {
+				log.Fatal("a.receive : dial failed, fatal error")
 				continue
 			}
 			a.connLock.Lock()
